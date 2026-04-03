@@ -1,4 +1,3 @@
-﻿// TestController.cs
 using Microsoft.AspNetCore.Mvc;
 
 namespace api.Controllers;
@@ -10,6 +9,6 @@ public class TestController : ControllerBase
     [HttpGet]
     public IActionResult Get()
     {
-        return Ok(new { message = "Hello from Clinicrest API 🚀" });
+        return Ok(new { message = "Hello from Clinicrest API" });
     }
 }

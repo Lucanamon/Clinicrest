@@ -9,6 +9,6 @@ export class ApiService {
   constructor(private http: HttpClient) { }
 
   getTest() {
-    return this.http.get('https://localhost:5001/api/test');
+    return this.http.get('/api/test');
   }
 }
