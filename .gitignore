@@ -4340,3 +4340,8 @@ apps/api/obj/buildcheck2/Debug/net8.0/api.GeneratedMSBuildEditorConfig.editorcon
 apps/api/obj/buildcheck2/Debug/net8.0/api.GlobalUsings.g.cs
 apps/api/obj/buildcheck2/Debug/net8.0/api.MvcApplicationPartsAssemblyInfo.cache
 apps/api/obj/buildcheck2/Debug/net8.0/api.MvcApplicationPartsAssemblyInfo.cs
+
+# Local secrets (Docker / env)
+.env
+.env.local
+.env.*.local

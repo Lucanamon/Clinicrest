@@ -1,7 +1,10 @@
-# Production-oriented stack: PostgreSQL (internal), API, Angular+nginx.
-# Build: docker compose build
-# Run:   docker compose up -d
-# Env:   copy .env.example to .env and set secrets (JWT, Postgres, etc.)
+# Use pre-built images from Docker Hub (after CI push).
+# Usage:
+#   export DOCKERHUB_USERNAME=youruser
+#   export IMAGE_TAG=latest   # or a git SHA tag from CI
+#   docker compose -f docker-compose.registry.yml up -d
+#
+# Set JWT_SECRET, POSTGRES_PASSWORD, etc. via `.env` (see .env.example).
 
 services:
   db:
@@ -9,34 +12,29 @@ services:
     container_name: clinicrest-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-clinicrest}
-      POSTGRES_USER: ${POSTGRES_USER:-clinicrest}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-miniflowdb}
+      POSTGRES_USER: ${POSTGRES_USER:-miniflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:miniflowpass}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-clinicrest} -d ${POSTGRES_DB:-clinicrest}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-miniflow} -d ${POSTGRES_DB:-miniflowdb}"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 15s
     networks:
       - backend
-    # Do not publish DB port to the host in production (use internal network only).
-    # For local DB access, use: docker compose --profile tools up -d
-    # or docker compose exec db psql -U clinicrest -d clinicrest
 
   api:
+    image: ${DOCKERHUB_USERNAME:?set DOCKERHUB_USERNAME}/clinicrest-api:${IMAGE_TAG:-latest}
     container_name: clinicrest-api
     restart: unless-stopped
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: >-
-        Host=db;Port=5432;Database=${POSTGRES_DB:-clinicrest};Username=${POSTGRES_USER:-clinicrest};Password=${POSTGRES_PASSWORD}
+        Host=db;Port=5432;Database=${POSTGRES_DB:-clinicrest};Username=${POSTGRES_USER:-miniflow};Password=${POSTGRES_PASSWORD:miniflowpass}
       Jwt__Issuer: ${JWT_ISSUER:-clinicrest-api}
       Jwt__Audience: ${JWT_AUDIENCE:-clinicrest-web}
       Jwt__Secret: ${JWT_SECRET:-change-me-set-JWT_SECRET-in-production-min-32-chars}
@@ -58,11 +56,9 @@ services:
       - "${API_PORT:-8080}:8080"
 
   web:
+    image: ${DOCKERHUB_USERNAME:?set DOCKERHUB_USERNAME}/clinicrest-web:${IMAGE_TAG:-latest}
     container_name: clinicrest-web
     restart: unless-stopped
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
     depends_on:
       api:
         condition: service_healthy
