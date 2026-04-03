@@ -1,0 +1,7 @@
+C:\Users\USER\Documents\Repositories\Clinicrest\apps\api\obj\buildcheck2\Debug\net8.0\api.csproj.AssemblyReference.cache
+C:\Users\USER\Documents\Repositories\Clinicrest\apps\api\obj\buildcheck2\Debug\net8.0\api.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\USER\Documents\Repositories\Clinicrest\apps\api\obj\buildcheck2\Debug\net8.0\api.AssemblyInfoInputs.cache
+C:\Users\USER\Documents\Repositories\Clinicrest\apps\api\obj\buildcheck2\Debug\net8.0\api.AssemblyInfo.cs
+C:\Users\USER\Documents\Repositories\Clinicrest\apps\api\obj\buildcheck2\Debug\net8.0\api.csproj.CoreCompileInputs.cache
+C:\Users\USER\Documents\Repositories\Clinicrest\apps\api\obj\buildcheck2\Debug\net8.0\api.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\USER\Documents\Repositories\Clinicrest\apps\api\obj\buildcheck2\Debug\net8.0\api.MvcApplicationPartsAssemblyInfo.cache
