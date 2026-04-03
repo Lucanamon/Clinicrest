@@ -1,0 +1,160 @@
+:host {
+  display: block;
+}
+
+.dashboard-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  background: #f3f6fb;
+}
+
+.sidebar {
+  border-right: 1px solid #e6ebf3;
+  background: #ffffff;
+  padding: 1.5rem 1.25rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.brand-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+  background: #10b981;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.brand p {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.nav-links {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.nav-links a {
+  color: #334155;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.92rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 10px;
+}
+
+.nav-links a:hover {
+  background: #f1f5f9;
+}
+
+.nav-links a.active {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.main-panel {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.topbar {
+  height: 74px;
+  border-bottom: 1px solid #e6ebf3;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.5rem;
+}
+
+.search-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: min(420px, 100%);
+  padding: 0.55rem 0.8rem;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 0.86rem;
+  background: #f8fafc;
+}
+
+.search-box span {
+  white-space: nowrap;
+}
+
+.search-box input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #0f172a;
+  font-size: 0.9rem;
+}
+
+.user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid #dbe3ef;
+  background: #ffffff;
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem 0.35rem 0.35rem;
+  cursor: pointer;
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #0ea5e9;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-grid;
+  place-items: center;
+}
+
+.name {
+  color: #334155;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.content {
+  padding: 1.5rem;
+}
+
+@media (max-width: 980px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid #e6ebf3;
+  }
+
+  .topbar {
+    padding: 0.9rem 1rem;
+  }
+
+  .content {
+    padding: 1rem;
+  }
+}

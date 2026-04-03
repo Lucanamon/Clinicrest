@@ -1,14 +1,20 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class TestController : ControllerBase
 {
     [HttpGet]
     public IActionResult Get()
     {
-        return Ok(new { message = "Hello from Clinicrest API" });
+        return Ok(new
+        {
+            message = "Hello from Clinicrest API",
+            user = User.Identity?.Name
+        });
     }
 }
