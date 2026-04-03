@@ -1,0 +1,28 @@
+<main class="login-shell">
+  <section class="login-card">
+    <header>
+      <h1>Welcome back</h1>
+      <p>Sign in to Clinicrest dashboard</p>
+    </header>
+
+    <form [formGroup]="loginForm" (ngSubmit)="submit()">
+      <label>
+        <span>Username</span>
+        <input type="text" formControlName="username" placeholder="rootadmin" />
+      </label>
+
+      <label>
+        <span>Password</span>
+        <input type="password" formControlName="password" placeholder="Enter password" />
+      </label>
+
+      @if (error()) {
+        <p class="error-msg">{{ error() }}</p>
+      }
+
+      <button type="submit" [disabled]="loading()">
+        {{ loading() ? 'Signing in...' : 'Sign in' }}
+      </button>
+    </form>
+  </section>
+</main>

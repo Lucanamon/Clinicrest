@@ -1,0 +1,35 @@
+<div class="dashboard-layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-dot" aria-hidden="true"></span>
+      <div>
+        <h1>Clinicrest</h1>
+        <p>Clinical Dashboard</p>
+      </div>
+    </div>
+
+    <nav class="nav-links" aria-label="Main navigation">
+      <a routerLink="/patients" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        Patients
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main-panel">
+    <header class="topbar">
+      <label class="search-box">
+        <span>Search</span>
+        <input type="search" placeholder="Search patients, appointments..." />
+      </label>
+
+      <button class="user-pill" type="button" (click)="logout()">
+        <span class="avatar">DR</span>
+        <span class="name">{{ username }}</span>
+      </button>
+    </header>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

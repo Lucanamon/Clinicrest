@@ -6,6 +6,7 @@ namespace api.Infrastructure.Persistence;
 public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
 {
     public DbSet<Patient> Patients => Set<Patient>();
+    public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -43,6 +44,30 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
             entity.HasIndex(p => p.Name)
                 .HasDatabaseName("ix_patients_name_unique_ci")
+                .IsUnique();
+        });
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.ToTable("users");
+
+            entity.HasKey(u => u.Id);
+
+            entity.Property(u => u.Username)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(u => u.PasswordHash)
+                .IsRequired()
+                .HasMaxLength(512);
+
+            entity.Property(u => u.Role)
+                .HasConversion<string>()
+                .IsRequired()
+                .HasMaxLength(16);
+
+            entity.HasIndex(u => u.Username)
+                .HasDatabaseName("ix_users_username_unique")
                 .IsUnique();
         });
     }
