@@ -3,14 +3,12 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev:api": "dotnet watch --project ./apps/api run",
-    "dev:web": "npm --prefix ./apps/web run start -- --open",
-    "dev:web:wait": "wait-on tcp:localhost:5176 && npm --prefix ./apps/web run start -- --open",
-    "dev": "cross-env FORCE_COLOR=1 concurrently --kill-others --success first --names API,WEB --prefix-colors blue,magenta \"npm run dev:api\" \"npm run dev:web:wait\""
+    "dev:api": "dotnet watch --project ./apps/api run --urls http://localhost:5001",
+    "dev:web": "npm --prefix ./apps/web run start -- --host localhost --port 4200 --open",
+    "dev": "cross-env FORCE_COLOR=1 concurrently --kill-others --success first --names API,WEB --prefix-colors blue,magenta \"npm run dev:api\" \"npm run dev:web\""
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
-    "cross-env": "^10.1.0",
-    "wait-on": "^9.0.1"
+    "cross-env": "^10.1.0"
   }
 }

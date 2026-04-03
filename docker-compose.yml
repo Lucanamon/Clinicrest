@@ -4,13 +4,13 @@ services:
     container_name: clinicrest-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-clinicrest}
-      POSTGRES_USER: ${POSTGRES_USER:-clinicrest}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-miniflowdb}
+      POSTGRES_USER: ${POSTGRES_USER:-miniflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-miniflowpass}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-clinicrest} -d ${POSTGRES_DB:-clinicrest}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-miniflow} -d ${POSTGRES_DB:-miniflowdb}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -30,7 +30,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-clinicrest};Username=${POSTGRES_USER:-clinicrest};Password=${POSTGRES_PASSWORD:-change_me}
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-miniflowdb};Username=${POSTGRES_USER:-miniflow};Password=${POSTGRES_PASSWORD:-miniflowpass}
     depends_on:
       db:
         condition: service_healthy
@@ -74,6 +74,5 @@ volumes:
 networks:
   backend:
     driver: bridge
-    internal: true
   frontend:
     driver: bridge
