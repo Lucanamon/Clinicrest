@@ -1,0 +1,33 @@
+# Git and IDE
+.git
+.github
+**/.vs
+**/.vscode
+**/.idea
+**/*.user
+
+# Build outputs
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.angular
+
+# Tests and local tooling
+**/coverage
+**/*.spec.ts
+**/__tests__
+
+# Docs (not needed in images)
+**/*.md
+LICENSE
+
+# Env files (inject at runtime, never bake secrets)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# OS
+**/.DS_Store
+Thumbs.db

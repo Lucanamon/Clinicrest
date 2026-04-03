@@ -1,51 +1,28 @@
-name: clinicrest-ci-cd
+name: CI/CD
 
 on:
   push:
-    branches: [master]
+    branches: [main, master]
+    tags: ["v*"]
   pull_request:
-    branches: [master]
+    branches: [main, master]
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOCKERHUB_API_IMAGE: clinicrest-api
+  DOCKERHUB_WEB_IMAGE: clinicrest-web
+
 jobs:
-  build-test:
+  build-images:
+    name: Build (and push on default branch / tags)
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x"
-
-      - name: Restore backend dependencies
-        run: dotnet restore apps/api/api.csproj
-
-      - name: Build backend
-        run: dotnet build apps/api/api.csproj --configuration Release --no-restore
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: apps/web/package-lock.json
-
-      - name: Install frontend dependencies
-        working-directory: apps/web
-        run: npm install
-
-      - name: Build frontend
-        working-directory: apps/web
-        run: npm run build -- --configuration production --output-mode static
-
-  docker-images:
-    runs-on: ubuntu-latest
-    needs: build-test
     permissions:
       contents: read
-      packages: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,46 +30,113 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Generate image tags
-        id: vars
-        run: |
-          echo "sha_short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      # ---- Pull requests: build only (no registry secrets required) ----
+      - name: Build API image (PR)
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: false
+          tags: clinicrest-api:pr-${{ github.event.pull_request.number }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
 
-      - name: Build API image
-        run: |
-          docker build \
-            -f apps/api/Dockerfile \
-            -t clinicrest-api:${{ steps.vars.outputs.sha_short }} \
-            -t clinicrest-api:latest \
-            .
+      - name: Build Web image (PR)
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: false
+          tags: clinicrest-web:pr-${{ github.event.pull_request.number }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
 
-      - name: Build WEB image
-        run: |
-          docker build \
-            -f apps/web/Dockerfile \
-            -t clinicrest-web:${{ steps.vars.outputs.sha_short }} \
-            -t clinicrest-web:latest \
-            .
-
-      - name: Login to Docker Hub (optional)
-        if: github.ref == 'refs/heads/master' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
+      # ---- Push: login + metadata + push with GHA cache ----
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Push API image (optional)
-        if: github.ref == 'refs/heads/master' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
-        run: |
-          docker tag clinicrest-api:${{ steps.vars.outputs.sha_short }} ${{ secrets.DOCKERHUB_USERNAME }}/clinicrest-api:${{ steps.vars.outputs.sha_short }}
-          docker tag clinicrest-api:latest ${{ secrets.DOCKERHUB_USERNAME }}/clinicrest-api:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/clinicrest-api:${{ steps.vars.outputs.sha_short }}
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/clinicrest-api:latest
+      - name: Docker meta (API)
+        id: meta_api
+        if: github.event_name != 'pull_request'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_API_IMAGE }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref_type == 'branch' && (github.ref_name == 'main' || github.ref_name == 'master') }}
+            type=sha,prefix=,format=short
+            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
-      - name: Push WEB image (optional)
-        if: github.ref == 'refs/heads/master' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
-        run: |
-          docker tag clinicrest-web:${{ steps.vars.outputs.sha_short }} ${{ secrets.DOCKERHUB_USERNAME }}/clinicrest-web:${{ steps.vars.outputs.sha_short }}
-          docker tag clinicrest-web:latest ${{ secrets.DOCKERHUB_USERNAME }}/clinicrest-web:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/clinicrest-web:${{ steps.vars.outputs.sha_short }}
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/clinicrest-web:latest
+      - name: Docker meta (Web)
+        id: meta_web
+        if: github.event_name != 'pull_request'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_WEB_IMAGE }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref_type == 'branch' && (github.ref_name == 'main' || github.ref_name == 'master') }}
+            type=sha,prefix=,format=short
+            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Build and push API image
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: ${{ steps.meta_api.outputs.tags }}
+          labels: ${{ steps.meta_api.outputs.labels }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push Web image
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: ${{ steps.meta_web.outputs.tags }}
+          labels: ${{ steps.meta_web.outputs.labels }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  # Optional: deploy to a VM over SSH (set repository secrets to enable)
+  deploy-ssh:
+    name: Deploy via SSH (optional)
+    needs: build-images
+    # Enable by adding repository secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY
+    if: >
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') &&
+      secrets.DEPLOY_HOST != '' &&
+      secrets.DEPLOY_USER != '' &&
+      secrets.DEPLOY_SSH_KEY != ''
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: 22
+          script_stop: true
+          script: |
+            set -euo pipefail
+            export DOCKERHUB_USERNAME="${{ secrets.DOCKERHUB_USERNAME }}"
+            export IMAGE_TAG="${{ github.sha }}"
+            REMOTE_PATH="${{ secrets.DEPLOY_REMOTE_PATH }}"
+            if [ -z "$REMOTE_PATH" ]; then REMOTE_PATH="/opt/clinicrest"; fi
+            cd "$REMOTE_PATH"
+            docker compose -f docker-compose.registry.yml pull
+            docker compose -f docker-compose.registry.yml up -d --remove-orphans
