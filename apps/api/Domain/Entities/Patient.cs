@@ -15,4 +15,8 @@ public class Patient
     public required string PhoneNumber { get; set; }
 
     public DateTime CreatedAt { get; set; }
+
+    public bool IsDeleted { get; set; }
+
+    public DateTime? DeletedAt { get; set; }
 }

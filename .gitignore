@@ -4352,3 +4352,4 @@ apps/api/obj/Debug/net8.0/rpswa.dswa.cache.json
 apps/api/obj/Debug/net8.0/staticwebassets.build.endpoints.json
 apps/api/obj/Debug/net8.0/staticwebassets.build.json.cache
 apps/api/obj/Debug/net8.0/swae.build.ex.cache
+node_modules

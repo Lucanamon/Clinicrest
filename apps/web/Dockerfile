@@ -6,20 +6,21 @@ ARG NGINX_IMAGE=nginx:1.27-alpine
 FROM ${NODE_IMAGE} AS build
 WORKDIR /app
 
-# Reproducible installs (requires package-lock.json)
-COPY apps/web/package.json apps/web/package-lock.json ./
+# Monorepo: root lockfile + workspace package manifests
+COPY package.json package-lock.json ./
+COPY apps/web/package.json apps/web/
 RUN --mount=type=cache,id=npm-clinicrest,target=/root/.npm \
     npm ci
 
-COPY apps/web/ ./
+COPY apps/web/ ./apps/web/
 # Static browser bundle (no Node SSR server in container)
-RUN npm run build -- --configuration production --output-mode static
+RUN npm run build -w web -- --configuration production --output-mode static
 
-# Normalize Angular output (browser/ vs flat)
+# Normalize Angular output (browser/ vs flat); workspace root is /app, app lives in apps/web/
 RUN mkdir -p /opt/web-dist \
-    && if [ -d "dist/web/browser" ]; then cp -r dist/web/browser/. /opt/web-dist/; \
-    elif [ -d "dist/web" ]; then cp -r dist/web/. /opt/web-dist/; \
-    else echo "Angular production output not found under dist/"; exit 1; fi
+    && if [ -d "apps/web/dist/web/browser" ]; then cp -r apps/web/dist/web/browser/. /opt/web-dist/; \
+    elif [ -d "apps/web/dist/web" ]; then cp -r apps/web/dist/web/. /opt/web-dist/; \
+    else echo "Angular production output not found under apps/web/dist/"; exit 1; fi
 
 FROM ${NGINX_IMAGE} AS runtime
 WORKDIR /usr/share/nginx/html

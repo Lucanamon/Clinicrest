@@ -6,10 +6,73 @@
     </div>
 
     <div class="header-metrics">
-      <span class="metric-pill">{{ patients().length }} total</span>
+      <span class="metric-pill">{{ totalCount() }} total</span>
       <a routerLink="/patients/new" class="action-btn">+ New patient</a>
     </div>
   </header>
+
+  <div class="list-toolbar">
+    <label class="toolbar-field search-field">
+      <span class="sr-only">Search by name</span>
+      <input
+        type="search"
+        name="patientSearch"
+        placeholder="Search by name…"
+        autocomplete="off"
+        [ngModel]="searchTerm()"
+        (ngModelChange)="onSearchChange($event)"
+      />
+    </label>
+
+    <label class="toolbar-field">
+      <span class="field-label">Gender</span>
+      <select
+        class="select-input"
+        [value]="genderFilter()"
+        (change)="onGenderChange($any($event.target).value)"
+      >
+        <option value="">All</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+        <option value="Other">Other</option>
+        <option value="Non-binary">Non-binary</option>
+      </select>
+    </label>
+
+    <label class="toolbar-field">
+      <span class="field-label">Born from</span>
+      <input
+        class="date-input"
+        type="date"
+        [value]="fromDateOfBirth()"
+        (change)="onFromDobChange($any($event.target).value)"
+      />
+    </label>
+
+    <label class="toolbar-field">
+      <span class="field-label">Born to</span>
+      <input
+        class="date-input"
+        type="date"
+        [value]="toDateOfBirth()"
+        (change)="onToDobChange($any($event.target).value)"
+      />
+    </label>
+
+    <label class="toolbar-field">
+      <span class="field-label">Page size</span>
+      <select
+        class="select-input"
+        [value]="pageSize()"
+        (change)="onPageSizeChange($any($event.target).value)"
+      >
+        <option [value]="10">10</option>
+        <option [value]="25">25</option>
+        <option [value]="50">50</option>
+        <option [value]="100">100</option>
+      </select>
+    </label>
+  </div>
 
   @if (loading()) {
     <section class="state-card">Loading patients...</section>
@@ -45,6 +108,24 @@
           </tr>
         </tbody>
       </table>
+      @if (totalCount() > 0) {
+        <footer class="pagination-bar">
+          <button type="button" class="page-btn" [disabled]="page() <= 1" (click)="goToPage(page() - 1)">
+            Previous
+          </button>
+          <span class="page-status">
+            Page {{ page() }} of {{ totalPages() || 1 }} · {{ pageSize() }} per page
+          </span>
+          <button
+            type="button"
+            class="page-btn"
+            [disabled]="totalPages() > 0 && page() >= totalPages()"
+            (click)="goToPage(page() + 1)"
+          >
+            Next
+          </button>
+        </footer>
+      }
     </section>
   }
 </main>

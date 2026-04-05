@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { BehaviorSubject, Observable } from 'rxjs';
 
 export interface PatientDto {
   id: string;
@@ -22,6 +22,24 @@ export interface CreatePatientRequest {
 
 export type UpdatePatientRequest = CreatePatientRequest;
 
+export interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+}
+
+export type PagedPatientsResult = PagedResult<PatientDto>;
+
+export interface GetPatientsParams {
+  pageNumber?: number;
+  pageSize?: number;
+  searchTerm?: string;
+  gender?: string;
+  fromDateOfBirth?: string;
+  toDateOfBirth?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -29,8 +47,41 @@ export class PatientService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = '/api/patients';
 
-  getAll(): Observable<PatientDto[]> {
-    return this.http.get<PatientDto[]>(this.baseUrl);
+  private readonly searchTerm$ = new BehaviorSubject<string>('');
+
+  setSearchTerm(term: string): void {
+    this.searchTerm$.next(term);
+  }
+
+  getSearchTerm(): Observable<string> {
+    return this.searchTerm$.asObservable();
+  }
+
+  getSearchTermSnapshot(): string {
+    return this.searchTerm$.value;
+  }
+
+  getPaged(params?: GetPatientsParams): Observable<PagedPatientsResult> {
+    let httpParams = new HttpParams();
+    if (params?.pageNumber != null) {
+      httpParams = httpParams.set('pageNumber', String(params.pageNumber));
+    }
+    if (params?.pageSize != null) {
+      httpParams = httpParams.set('pageSize', String(params.pageSize));
+    }
+    if (params?.searchTerm?.trim()) {
+      httpParams = httpParams.set('searchTerm', params.searchTerm.trim());
+    }
+    if (params?.gender?.trim()) {
+      httpParams = httpParams.set('gender', params.gender.trim());
+    }
+    if (params?.fromDateOfBirth) {
+      httpParams = httpParams.set('fromDateOfBirth', params.fromDateOfBirth);
+    }
+    if (params?.toDateOfBirth) {
+      httpParams = httpParams.set('toDateOfBirth', params.toDateOfBirth);
+    }
+    return this.http.get<PagedPatientsResult>(this.baseUrl, { params: httpParams });
   }
 
   getById(id: string): Observable<PatientDto> {

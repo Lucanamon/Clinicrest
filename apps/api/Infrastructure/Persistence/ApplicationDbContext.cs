@@ -45,6 +45,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .IsRequired()
                 .HasDefaultValueSql("NOW()");
 
+            entity.Property(p => p.IsDeleted)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(p => p.DeletedAt)
+                .HasColumnType("timestamp with time zone");
+
             entity.HasIndex(p => new { p.LastName, p.FirstName })
                 .HasDatabaseName("ix_patients_name");
         });

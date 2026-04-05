@@ -2,13 +2,19 @@
   "name": "clinicrest",
   "private": true,
   "version": "1.0.0",
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
     "dev:api": "dotnet watch --project ./apps/api run --urls http://localhost:5001",
-    "dev:web": "npm --prefix ./apps/web run start -- --host localhost --port 4200 --open",
+    "dev:web": "npm run start -w web -- --host localhost --port 4200 --open",
+    "build:api": "dotnet build ./apps/api/api.csproj -c Release",
+    "build:web": "npm run build -w web",
     "dev": "cross-env FORCE_COLOR=1 concurrently --kill-others --success first --names API,WEB --prefix-colors blue,magenta \"npm run dev:api\" \"npm run dev:web\""
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0"
-  }
+  },
+  "packageManager": "npm@11.6.2"
 }

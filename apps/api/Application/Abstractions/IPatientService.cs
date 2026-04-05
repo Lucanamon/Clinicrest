@@ -4,7 +4,9 @@ namespace api.Application.Abstractions;
 
 public interface IPatientService
 {
-    Task<IEnumerable<PatientDto>> GetAllAsync(CancellationToken cancellationToken = default);
+    Task<PagedResult<PatientDto>> GetPagedAsync(
+        PatientQueryParams query,
+        CancellationToken cancellationToken = default);
 
     Task<PatientDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 

@@ -19,7 +19,9 @@ public class PatientService(IPatientRepository repository) : IPatientService
             DateOfBirth = DateTime.SpecifyKind(request.DateOfBirth.Date, DateTimeKind.Utc),
             Gender = request.Gender.Trim(),
             PhoneNumber = request.PhoneNumber.Trim(),
-            CreatedAt = utcNow
+            CreatedAt = utcNow,
+            IsDeleted = false,
+            DeletedAt = null
         };
 
         await repository.AddAsync(patient, cancellationToken);
@@ -31,10 +33,19 @@ public class PatientService(IPatientRepository repository) : IPatientService
         return await repository.DeleteAsync(id, cancellationToken);
     }
 
-    public async Task<IEnumerable<PatientDto>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<PagedResult<PatientDto>> GetPagedAsync(
+        PatientQueryParams query,
+        CancellationToken cancellationToken = default)
     {
-        var patients = await repository.GetAllAsync(cancellationToken);
-        return patients.Select(MapToDto);
+        var (items, totalCount) = await repository.GetPagedAsync(query, cancellationToken);
+
+        return new PagedResult<PatientDto>
+        {
+            Items = items.Select(MapToDto).ToList(),
+            TotalCount = totalCount,
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize
+        };
     }
 
     public async Task<PatientDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

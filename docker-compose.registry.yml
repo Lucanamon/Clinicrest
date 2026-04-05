@@ -34,7 +34,7 @@ services:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: >-
-        Host=db;Port=5432;Database=${POSTGRES_DB:-clinicrest};Username=${POSTGRES_USER:-miniflow};Password=${POSTGRES_PASSWORD:miniflowpass}
+        Host=db;Port=5432;Database=${POSTGRES_DB:-miniflowdb};Username=${POSTGRES_USER:-miniflow};Password=${POSTGRES_PASSWORD:-miniflowpass}
       Jwt__Issuer: ${JWT_ISSUER:-clinicrest-api}
       Jwt__Audience: ${JWT_AUDIENCE:-clinicrest-web}
       Jwt__Secret: ${JWT_SECRET:-change-me-set-JWT_SECRET-in-production-min-32-chars}

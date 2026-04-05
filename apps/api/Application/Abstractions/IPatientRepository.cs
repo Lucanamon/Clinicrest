@@ -1,10 +1,13 @@
+using api.Application.Patients;
 using api.Domain.Entities;
 
 namespace api.Application.Abstractions;
 
 public interface IPatientRepository
 {
-    Task<IReadOnlyList<Patient>> GetAllAsync(CancellationToken cancellationToken = default);
+    Task<(IReadOnlyList<Patient> Items, int TotalCount)> GetPagedAsync(
+        PatientQueryParams query,
+        CancellationToken cancellationToken = default);
 
     Task<Patient?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 

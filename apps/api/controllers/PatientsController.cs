@@ -11,10 +11,27 @@ namespace api.Controllers;
 public class PatientsController(IPatientService patientService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<PatientDto>>> GetAll(CancellationToken cancellationToken)
+    public async Task<ActionResult<PagedResult<PatientDto>>> GetPatients(
+        [FromQuery] PatientQueryParams query,
+        CancellationToken cancellationToken = default)
     {
-        var patients = await patientService.GetAllAsync(cancellationToken);
-        return Ok(patients);
+        if (query.PageNumber < 1)
+        {
+            query.PageNumber = 1;
+        }
+
+        if (query.PageSize < 1)
+        {
+            query.PageSize = 10;
+        }
+
+        if (query.PageSize > 100)
+        {
+            query.PageSize = 100;
+        }
+
+        var result = await patientService.GetPagedAsync(query, cancellationToken);
+        return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
