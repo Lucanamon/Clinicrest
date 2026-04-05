@@ -4345,3 +4345,10 @@ apps/api/obj/buildcheck2/Debug/net8.0/api.MvcApplicationPartsAssemblyInfo.cs
 .env
 .env.local
 .env.*.local
+apps/api/obj/Debug/net8.0/api.sourcelink.json
+apps/api/obj/Debug/net8.0/rjsmcshtml.dswa.cache.json
+apps/api/obj/Debug/net8.0/rjsmrazor.dswa.cache.json
+apps/api/obj/Debug/net8.0/rpswa.dswa.cache.json
+apps/api/obj/Debug/net8.0/staticwebassets.build.endpoints.json
+apps/api/obj/Debug/net8.0/staticwebassets.build.json.cache
+apps/api/obj/Debug/net8.0/swae.build.ex.cache

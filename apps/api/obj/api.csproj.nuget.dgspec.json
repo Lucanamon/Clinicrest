@@ -1,28 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\USER\\Documents\\Repositories\\Clinicrest\\apps\\api\\api.csproj": {}
+    "C:\\Users\\Holy_\\OneDrive\\Documents\\Repositories\\Clinicrest\\apps\\api\\api.csproj": {}
   },
   "projects": {
-    "C:\\Users\\USER\\Documents\\Repositories\\Clinicrest\\apps\\api\\api.csproj": {
+    "C:\\Users\\Holy_\\OneDrive\\Documents\\Repositories\\Clinicrest\\apps\\api\\api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\USER\\Documents\\Repositories\\Clinicrest\\apps\\api\\api.csproj",
+        "projectUniqueName": "C:\\Users\\Holy_\\OneDrive\\Documents\\Repositories\\Clinicrest\\apps\\api\\api.csproj",
         "projectName": "api",
-        "projectPath": "C:\\Users\\USER\\Documents\\Repositories\\Clinicrest\\apps\\api\\api.csproj",
-        "packagesPath": "C:\\Users\\USER\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\USER\\Documents\\Repositories\\Clinicrest\\apps\\api\\obj\\",
+        "projectPath": "C:\\Users\\Holy_\\OneDrive\\Documents\\Repositories\\Clinicrest\\apps\\api\\api.csproj",
+        "packagesPath": "C:\\Users\\Holy_\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Holy_\\OneDrive\\Documents\\Repositories\\Clinicrest\\apps\\api\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\USER\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Users\\Holy_\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -40,7 +37,8 @@
           "enableAudit": "true",
           "auditLevel": "low",
           "auditMode": "direct"
-        }
+        },
+        "SdkAnalysisLevel": "10.0.200"
       },
       "frameworks": {
         "net8.0": {
@@ -88,6 +86,24 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.25, 8.0.25]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Host.win-x64",
+              "version": "[8.0.25, 8.0.25]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.25, 8.0.25]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[8.0.25, 8.0.25]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.AspNetCore.App": {
               "privateAssets": "none"
@@ -96,7 +112,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.403/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

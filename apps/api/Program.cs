@@ -1,7 +1,10 @@
 using System.Text;
+using api.Application.Abstractions;
+using api.Application.Services;
 using api.Domain.Entities;
 using api.Infrastructure.Auth;
 using api.Infrastructure.Persistence;
+using api.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -43,6 +46,9 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddScoped<IPatientRepository, PatientRepository>();
+builder.Services.AddScoped<IPatientService, PatientService>();
 
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 
