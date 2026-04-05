@@ -19,32 +19,34 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
             entity.HasKey(p => p.Id);
 
-            entity.Property(p => p.Name)
+            entity.Property(p => p.FirstName)
                 .IsRequired()
                 .HasMaxLength(200)
                 .HasColumnType("citext");
 
-            entity.Property(p => p.Age)
-                .IsRequired();
+            entity.Property(p => p.LastName)
+                .IsRequired()
+                .HasMaxLength(200)
+                .HasColumnType("citext");
 
-            entity.Property(p => p.Phone)
+            entity.Property(p => p.DateOfBirth)
+                .IsRequired()
+                .HasColumnType("date");
+
+            entity.Property(p => p.Gender)
                 .IsRequired()
                 .HasMaxLength(32);
 
-            entity.Property(p => p.Underlying)
-                .HasMaxLength(1000);
+            entity.Property(p => p.PhoneNumber)
+                .IsRequired()
+                .HasMaxLength(32);
 
             entity.Property(p => p.CreatedAt)
                 .IsRequired()
                 .HasDefaultValueSql("NOW()");
 
-            entity.Property(p => p.UpdatedAt)
-                .IsRequired()
-                .HasDefaultValueSql("NOW()");
-
-            entity.HasIndex(p => p.Name)
-                .HasDatabaseName("ix_patients_name_unique_ci")
-                .IsUnique();
+            entity.HasIndex(p => new { p.LastName, p.FirstName })
+                .HasDatabaseName("ix_patients_name");
         });
 
         modelBuilder.Entity<User>(entity =>
@@ -81,11 +83,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             if (entry.State == EntityState.Added)
             {
                 entry.Entity.CreatedAt = utcNow;
-                entry.Entity.UpdatedAt = utcNow;
-            }
-            else if (entry.State == EntityState.Modified)
-            {
-                entry.Entity.UpdatedAt = utcNow;
             }
         }
 
