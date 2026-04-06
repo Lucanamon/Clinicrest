@@ -35,8 +35,8 @@ public class AuthController(
             return Unauthorized(new { message = "Invalid credentials." });
         }
 
-        var token = GenerateJwt(user.Id.ToString(), user.Username, user.Role.ToString());
-        return Ok(new LoginResponse(token, user.Username, user.Role.ToString()));
+        var token = GenerateJwt(user.Id.ToString(), user.Username, user.Role);
+        return Ok(new LoginResponse(token, user.Username, user.Role, user.Id));
     }
 
     private string GenerateJwt(string userId, string username, string role)
@@ -75,4 +75,4 @@ public class AuthController(
 }
 
 public record LoginRequest(string Username, string Password);
-public record LoginResponse(string Token, string Username, string Role);
+public record LoginResponse(string Token, string Username, string Role, Guid UserId);

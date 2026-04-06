@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using System.Text;
 using api.Application.Abstractions;
 using api.Application.Services;
+using api.Domain;
 using api.Domain.Entities;
 using api.Infrastructure.Auth;
 using api.Infrastructure.Persistence;
@@ -41,7 +43,8 @@ builder.Services
             ValidIssuer = jwtIssuer,
             ValidAudience = jwtAudience,
             IssuerSigningKey = signingKey,
-            ClockSkew = TimeSpan.FromSeconds(30)
+            ClockSkew = TimeSpan.FromSeconds(30),
+            RoleClaimType = ClaimTypes.Role
         };
     });
 
@@ -49,6 +52,11 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IPatientRepository, PatientRepository>();
 builder.Services.AddScoped<IPatientService, PatientService>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<IBacklogRepository, BacklogRepository>();
+builder.Services.AddScoped<IBacklogService, BacklogService>();
 
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 
@@ -153,7 +161,7 @@ static async Task SeedRootAdminAsync(WebApplication app)
             Id = Guid.NewGuid(),
             Username = seedUsername,
             PasswordHash = string.Empty,
-            Role = UserRole.Admin
+            Role = Roles.Admin
         };
 
         newUser.PasswordHash = passwordHasher.HashPassword(newUser, seedPassword);

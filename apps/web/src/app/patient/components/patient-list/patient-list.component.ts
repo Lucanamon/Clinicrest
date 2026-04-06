@@ -1,10 +1,21 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import {
+  Component,
+  OnDestroy,
+  OnInit,
+  PLATFORM_ID,
+  afterNextRender,
+  computed,
+  inject,
+  signal
+} from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Subject, Subscription, debounceTime } from 'rxjs';
 import { PatientDto, PatientService } from '../../patient.service';
+import { AuthService } from '../../../services/auth';
 
 @Component({
   selector: 'app-patient-list',
@@ -15,10 +26,20 @@ import { PatientDto, PatientService } from '../../patient.service';
 })
 export class PatientListComponent implements OnInit, OnDestroy {
   private readonly patientService = inject(PatientService);
+  private readonly platformId = inject(PLATFORM_ID);
+  readonly auth = inject(AuthService);
 
   /** Single source of truth for the search box; survives reloads while this service lives. */
   readonly searchTerm = toSignal(this.patientService.getSearchTerm(), {
     initialValue: this.patientService.getSearchTermSnapshot()
+  });
+
+  readonly sortBy = toSignal(this.patientService.getSortBy(), {
+    initialValue: this.patientService.getSortBySnapshot()
+  });
+
+  readonly sortDirection = toSignal(this.patientService.getSortDirection(), {
+    initialValue: this.patientService.getSortDirectionSnapshot()
   });
 
   readonly patients = signal<PatientDto[]>([]);
@@ -43,12 +64,20 @@ export class PatientListComponent implements OnInit, OnDestroy {
   private readonly searchTrigger$ = new Subject<void>();
   private searchDebounceSub?: Subscription;
 
+  constructor() {
+    if (!isPlatformBrowser(this.platformId)) {
+      this.loading.set(false);
+    }
+    afterNextRender(() => {
+      this.loadPatients();
+    });
+  }
+
   ngOnInit(): void {
     this.searchDebounceSub = this.searchTrigger$.pipe(debounceTime(300)).subscribe(() => {
       this.page.set(1);
       this.loadPatients();
     });
-    this.loadPatients();
   }
 
   ngOnDestroy(): void {
@@ -98,6 +127,17 @@ export class PatientListComponent implements OnInit, OnDestroy {
     this.loadPatients();
   }
 
+  onSortColumn(column: string): void {
+    const current = this.patientService.getSortBySnapshot();
+    const dir = this.patientService.getSortDirectionSnapshot();
+    if (current === column) {
+      this.patientService.setSort(column, dir === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.patientService.setSort(column, 'asc');
+    }
+    this.loadPatients();
+  }
+
   loadPatients(): void {
     this.loading.set(true);
     this.error.set(null);
@@ -113,7 +153,9 @@ export class PatientListComponent implements OnInit, OnDestroy {
         searchTerm: search || undefined,
         gender: gender || undefined,
         fromDateOfBirth: fromDob || undefined,
-        toDateOfBirth: toDob || undefined
+        toDateOfBirth: toDob || undefined,
+        sortBy: this.patientService.getSortBySnapshot(),
+        sortDirection: this.patientService.getSortDirectionSnapshot()
       })
       .subscribe({
         next: (res) => {

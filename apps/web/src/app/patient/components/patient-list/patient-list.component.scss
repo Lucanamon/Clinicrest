@@ -162,6 +162,34 @@ th {
   letter-spacing: 0.05em;
   color: #64748b;
   background: #f8fafc;
+  vertical-align: bottom;
+}
+
+.sort-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sort-header:hover {
+  color: #0284c7;
+}
+
+.sort-ind {
+  font-size: 0.75rem;
+  color: #0284c7;
 }
 
 tbody tr:hover {

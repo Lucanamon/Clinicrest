@@ -8,5 +8,5 @@ public class User
 
     public required string PasswordHash { get; set; }
 
-    public UserRole Role { get; set; }
+    public required string Role { get; set; }
 }

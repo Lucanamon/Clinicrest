@@ -38,6 +38,8 @@ export interface GetPatientsParams {
   gender?: string;
   fromDateOfBirth?: string;
   toDateOfBirth?: string;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
 }
 
 @Injectable({
@@ -48,6 +50,8 @@ export class PatientService {
   private readonly baseUrl = '/api/patients';
 
   private readonly searchTerm$ = new BehaviorSubject<string>('');
+  private readonly sortBy$ = new BehaviorSubject<string>('CreatedAt');
+  private readonly sortDirection$ = new BehaviorSubject<'asc' | 'desc'>('desc');
 
   setSearchTerm(term: string): void {
     this.searchTerm$.next(term);
@@ -59,6 +63,27 @@ export class PatientService {
 
   getSearchTermSnapshot(): string {
     return this.searchTerm$.value;
+  }
+
+  setSort(sortBy: string, sortDirection: 'asc' | 'desc'): void {
+    this.sortBy$.next(sortBy);
+    this.sortDirection$.next(sortDirection);
+  }
+
+  getSortBy(): Observable<string> {
+    return this.sortBy$.asObservable();
+  }
+
+  getSortDirection(): Observable<'asc' | 'desc'> {
+    return this.sortDirection$.asObservable();
+  }
+
+  getSortBySnapshot(): string {
+    return this.sortBy$.value;
+  }
+
+  getSortDirectionSnapshot(): 'asc' | 'desc' {
+    return this.sortDirection$.value;
   }
 
   getPaged(params?: GetPatientsParams): Observable<PagedPatientsResult> {
@@ -80,6 +105,15 @@ export class PatientService {
     }
     if (params?.toDateOfBirth) {
       httpParams = httpParams.set('toDateOfBirth', params.toDateOfBirth);
+    }
+    const sortBy = params?.sortBy;
+    const sortDirection = params?.sortDirection;
+    if (sortBy && sortDirection) {
+      const isDefaultCreatedDesc = sortBy === 'CreatedAt' && sortDirection === 'desc';
+      if (!isDefaultCreatedDesc) {
+        httpParams = httpParams.set('sortBy', sortBy);
+        httpParams = httpParams.set('sortDirection', sortDirection);
+      }
     }
     return this.http.get<PagedPatientsResult>(this.baseUrl, { params: httpParams });
   }

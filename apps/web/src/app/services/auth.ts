@@ -6,6 +6,7 @@ import { BehaviorSubject, Observable, tap } from 'rxjs';
 const TOKEN_KEY = 'clinicrest.token';
 const USERNAME_KEY = 'clinicrest.username';
 const ROLE_KEY = 'clinicrest.role';
+const USER_ID_KEY = 'clinicrest.userId';
 
 export interface LoginRequest {
   username: string;
@@ -16,6 +17,7 @@ export interface LoginResponse {
   token: string;
   username: string;
   role: string;
+  userId: string;
 }
 
 @Injectable({
@@ -42,6 +44,7 @@ export class AuthService {
         this.setStorageItem(TOKEN_KEY, response.token);
         this.setStorageItem(USERNAME_KEY, response.username);
         this.setStorageItem(ROLE_KEY, response.role);
+        this.setStorageItem(USER_ID_KEY, response.userId);
         this.authenticated.next(true);
       })
     );
@@ -51,6 +54,7 @@ export class AuthService {
     this.removeStorageItem(TOKEN_KEY);
     this.removeStorageItem(USERNAME_KEY);
     this.removeStorageItem(ROLE_KEY);
+    this.removeStorageItem(USER_ID_KEY);
     this.authenticated.next(false);
   }
 
@@ -64,6 +68,27 @@ export class AuthService {
 
   isAuthenticated(): boolean {
     return !!this.getToken();
+  }
+
+  getRole(): string | null {
+    return this.getStorageItem(ROLE_KEY);
+  }
+
+  getUserId(): string | null {
+    return this.getStorageItem(USER_ID_KEY);
+  }
+
+  isAdmin(): boolean {
+    return this.getRole() === 'Admin';
+  }
+
+  isDoctor(): boolean {
+    return this.getRole() === 'Doctor';
+  }
+
+  isAdminOrDoctor(): boolean {
+    const role = this.getRole();
+    return role === 'Admin' || role === 'Doctor';
   }
 
   private getStorageItem(key: string): string | null {

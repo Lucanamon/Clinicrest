@@ -1,0 +1,79 @@
+<div class="form-shell">
+  <header class="form-header">
+    <div>
+      <h1>{{ isEdit() ? 'Edit task' : 'New task' }}</h1>
+      <p>{{ isEdit() ? 'Update backlog details.' : 'Create an internal task.' }}</p>
+    </div>
+    <a routerLink="/backlog" class="back-link">← Back to list</a>
+  </header>
+
+  @if (lookupsLoading() || loading()) {
+    <section class="state-card">Loading…</section>
+  } @else if (loadError()) {
+    <section class="state-card error">{{ loadError() }}</section>
+  } @else {
+    @if (saveError()) {
+      <section class="state-card error">{{ saveError() }}</section>
+    }
+
+    <form class="backlog-form" [formGroup]="form" (ngSubmit)="submit()">
+      <div class="field-grid">
+        <label class="field field-span">
+          <span>Title *</span>
+          <input type="text" formControlName="title" autocomplete="off" />
+          @if (form.controls.title.touched && form.controls.title.invalid) {
+            <span class="field-error">Required</span>
+          }
+        </label>
+
+        <label class="field field-span">
+          <span>Description</span>
+          <textarea rows="4" formControlName="description" placeholder="Optional"></textarea>
+        </label>
+
+        <label class="field">
+          <span>Priority *</span>
+          <select formControlName="priority">
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Status *</span>
+          <select formControlName="status">
+            <option value="Open">Open</option>
+            <option value="InProgress">In progress</option>
+            <option value="Done">Done</option>
+          </select>
+        </label>
+
+        @if (showAssigneeSelect()) {
+          <label class="field field-span">
+            <span>Assigned to *</span>
+            <select formControlName="assignedToUserId">
+              <option value="" disabled>Select a user</option>
+              @for (u of users(); track u.id) {
+                <option [value]="u.id">{{ u.username }} ({{ u.role }})</option>
+              }
+            </select>
+            @if (form.controls.assignedToUserId.touched && form.controls.assignedToUserId.invalid) {
+              <span class="field-error">Required</span>
+            }
+          </label>
+        } @else if (isEdit()) {
+          <div class="field field-span readonly-assignee">
+            <span>Assigned to</span>
+            <p>{{ assignedLabel() }}</p>
+          </div>
+        }
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="cancel()">Cancel</button>
+        <button type="submit" class="btn-primary">{{ isEdit() ? 'Save changes' : 'Create task' }}</button>
+      </div>
+    </form>
+  }
+</div>

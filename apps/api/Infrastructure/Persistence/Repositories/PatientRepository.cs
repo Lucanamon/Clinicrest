@@ -65,7 +65,7 @@ public class PatientRepository(ApplicationDbContext dbContext) : IPatientReposit
             query = query.Where(p => p.DateOfBirth <= to);
         }
 
-        query = query.OrderBy(p => p.LastName).ThenBy(p => p.FirstName);
+        query = ApplyOrdering(query, queryParams);
 
         var totalCount = await query.CountAsync(cancellationToken);
 
@@ -90,6 +90,35 @@ public class PatientRepository(ApplicationDbContext dbContext) : IPatientReposit
     {
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    private static readonly HashSet<string> AllowedSortProperties =
+    [
+        nameof(Patient.FirstName),
+        nameof(Patient.LastName),
+        nameof(Patient.CreatedAt),
+        nameof(Patient.DateOfBirth),
+        nameof(Patient.Gender),
+        nameof(Patient.PhoneNumber)
+    ];
+
+    private static IQueryable<Patient> ApplyOrdering(IQueryable<Patient> queryable, PatientQueryParams queryParams)
+    {
+        if (!string.IsNullOrWhiteSpace(queryParams.SortBy))
+        {
+            var sortBy = queryParams.SortBy.Trim();
+            if (AllowedSortProperties.Contains(sortBy))
+            {
+                if (string.Equals(queryParams.SortDirection, "desc", StringComparison.OrdinalIgnoreCase))
+                {
+                    return queryable.OrderByDescending(x => EF.Property<object>(x, sortBy));
+                }
+
+                return queryable.OrderBy(x => EF.Property<object>(x, sortBy));
+            }
+        }
+
+        return queryable.OrderByDescending(x => x.CreatedAt);
     }
 
     /// <summary>

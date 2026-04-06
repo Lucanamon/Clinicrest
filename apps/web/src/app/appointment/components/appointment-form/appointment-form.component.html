@@ -1,0 +1,78 @@
+<div class="form-shell">
+  <header class="form-header">
+    <div>
+      <h1>{{ isEdit() ? 'Edit appointment' : 'New appointment' }}</h1>
+      <p>{{ isEdit() ? 'Update scheduling details.' : 'Book a visit for a patient.' }}</p>
+    </div>
+    <a routerLink="/appointments" class="back-link">← Back to list</a>
+  </header>
+
+  @if (lookupsLoading() || loading()) {
+    <section class="state-card">Loading…</section>
+  } @else if (loadError()) {
+    <section class="state-card error">{{ loadError() }}</section>
+  } @else {
+    @if (saveError()) {
+      <section class="state-card error">{{ saveError() }}</section>
+    }
+
+    <form class="appointment-form" [formGroup]="form" (ngSubmit)="submit()">
+      <div class="field-grid">
+        <label class="field field-span">
+          <span>Patient *</span>
+          <select formControlName="patientId">
+            <option value="" disabled>Select a patient</option>
+            @for (p of patients(); track p.id) {
+              <option [value]="p.id">{{ p.firstName }} {{ p.lastName }}</option>
+            }
+          </select>
+          @if (form.controls.patientId.touched && form.controls.patientId.invalid) {
+            <span class="field-error">Required</span>
+          }
+        </label>
+
+        @if (showDoctorField()) {
+          <label class="field field-span">
+            <span>Doctor *</span>
+            <select formControlName="doctorId">
+              <option value="" disabled>Select a doctor</option>
+              @for (d of doctors(); track d.id) {
+                <option [value]="d.id">{{ d.username }}</option>
+              }
+            </select>
+            @if (form.controls.doctorId.touched && form.controls.doctorId.invalid) {
+              <span class="field-error">Required</span>
+            }
+          </label>
+        }
+
+        <label class="field field-span">
+          <span>Date &amp; time *</span>
+          <input type="datetime-local" formControlName="appointmentDate" />
+          @if (form.controls.appointmentDate.touched && form.controls.appointmentDate.invalid) {
+            <span class="field-error">Required</span>
+          }
+        </label>
+
+        <label class="field">
+          <span>Status *</span>
+          <select formControlName="status">
+            <option value="Scheduled">Scheduled</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </label>
+
+        <label class="field field-span">
+          <span>Notes</span>
+          <input type="text" formControlName="notes" placeholder="Optional" />
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="cancel()">Cancel</button>
+        <button type="submit" class="btn-primary">{{ isEdit() ? 'Save changes' : 'Create appointment' }}</button>
+      </div>
+    </form>
+  }
+</div>

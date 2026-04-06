@@ -1,0 +1,162 @@
+<main class="backlog-shell">
+  <header class="backlog-header">
+    <div>
+      <h1>Backlog</h1>
+      <p>Internal tasks and follow-ups</p>
+    </div>
+
+    <div class="header-metrics">
+      <span class="metric-pill">{{ totalCount() }} total</span>
+      @if (auth.isAdmin()) {
+        <a routerLink="/backlog/new" class="action-btn">+ New task</a>
+      }
+    </div>
+  </header>
+
+  <div class="list-toolbar">
+    <label class="toolbar-field search-field">
+      <span class="sr-only">Search by title</span>
+      <input
+        type="search"
+        name="backlogSearch"
+        placeholder="Search by title…"
+        autocomplete="off"
+        [ngModel]="searchTerm()"
+        (ngModelChange)="onSearchChange($event)"
+      />
+    </label>
+
+    <label class="toolbar-field">
+      <span class="field-label">Status</span>
+      <select
+        class="select-input"
+        [value]="statusFilter()"
+        (change)="onStatusChange($any($event.target).value)"
+      >
+        <option value="">All</option>
+        <option value="Open">Open</option>
+        <option value="InProgress">In progress</option>
+        <option value="Done">Done</option>
+      </select>
+    </label>
+
+    <label class="toolbar-field">
+      <span class="field-label">Priority</span>
+      <select
+        class="select-input"
+        [value]="priorityFilter()"
+        (change)="onPriorityChange($any($event.target).value)"
+      >
+        <option value="">All</option>
+        <option value="Low">Low</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+      </select>
+    </label>
+
+    <label class="toolbar-field">
+      <span class="field-label">Page size</span>
+      <select
+        class="select-input"
+        [value]="pageSize()"
+        (change)="onPageSizeChange($any($event.target).value)"
+      >
+        <option [value]="10">10</option>
+        <option [value]="25">25</option>
+        <option [value]="50">50</option>
+        <option [value]="100">100</option>
+      </select>
+    </label>
+  </div>
+
+  @if (loading()) {
+    <section class="state-card">Loading backlog...</section>
+  } @else if (error()) {
+    <section class="state-card error">{{ error() }}</section>
+  } @else {
+    <section class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">
+              <button type="button" class="sort-header" (click)="onSortColumn('Title')">
+                Title
+                @if (sortBy() === 'Title') {
+                  <span class="sort-ind" aria-hidden="true">{{ sortDirection() === 'asc' ? '↑' : '↓' }}</span>
+                }
+              </button>
+            </th>
+            <th scope="col">
+              <button type="button" class="sort-header" (click)="onSortColumn('Priority')">
+                Priority
+                @if (sortBy() === 'Priority') {
+                  <span class="sort-ind" aria-hidden="true">{{ sortDirection() === 'asc' ? '↑' : '↓' }}</span>
+                }
+              </button>
+            </th>
+            <th scope="col">
+              <button type="button" class="sort-header" (click)="onSortColumn('Status')">
+                Status
+                @if (sortBy() === 'Status') {
+                  <span class="sort-ind" aria-hidden="true">{{ sortDirection() === 'asc' ? '↑' : '↓' }}</span>
+                }
+              </button>
+            </th>
+            <th scope="col">Assigned to</th>
+            <th scope="col">
+              <button type="button" class="sort-header" (click)="onSortColumn('CreatedAt')">
+                Created
+                @if (sortBy() === 'CreatedAt') {
+                  <span class="sort-ind" aria-hidden="true">{{ sortDirection() === 'asc' ? '↑' : '↓' }}</span>
+                }
+              </button>
+            </th>
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of items()">
+            <td class="primary-cell">{{ row.title }}</td>
+            <td>
+              <span class="priority-badge" [ngClass]="priorityClass(row.priority)">{{ row.priority }}</span>
+            </td>
+            <td>{{ row.status }}</td>
+            <td>{{ row.assignedToName }}</td>
+            <td>{{ formatDate(row.createdAt) }}</td>
+            <td class="row-actions">
+              @if (canEdit(row)) {
+                <a [routerLink]="['/backlog', row.id, 'edit']" class="link-btn">Edit</a>
+              }
+              @if (auth.isAdmin()) {
+                <button type="button" class="danger-btn" (click)="confirmDelete(row)">Delete</button>
+              }
+            </td>
+          </tr>
+          @if (items().length === 0) {
+            <tr>
+              <td colspan="6" class="empty-state">No tasks found.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      @if (totalCount() > 0) {
+        <footer class="pagination-bar">
+          <button type="button" class="page-btn" [disabled]="page() <= 1" (click)="goToPage(page() - 1)">
+            Previous
+          </button>
+          <span class="page-status">
+            Page {{ page() }} of {{ totalPages() || 1 }} · {{ pageSize() }} per page
+          </span>
+          <button
+            type="button"
+            class="page-btn"
+            [disabled]="totalPages() > 0 && page() >= totalPages()"
+            (click)="goToPage(page() + 1)"
+          >
+            Next
+          </button>
+        </footer>
+      }
+    </section>
+  }
+</main>

@@ -1,0 +1,159 @@
+<main class="appointments-shell">
+  <header class="appointments-header">
+    <div>
+      <h1>Appointments</h1>
+      <p>Schedule and manage visits</p>
+    </div>
+
+    <div class="header-metrics">
+      <span class="metric-pill">{{ totalCount() }} total</span>
+      @if (canEdit()) {
+        <a routerLink="/appointments/new" class="action-btn">+ New appointment</a>
+      }
+    </div>
+  </header>
+
+  <div class="list-toolbar">
+    <label class="toolbar-field search-field">
+      <span class="sr-only">Search by patient name</span>
+      <input
+        type="search"
+        name="appointmentSearch"
+        placeholder="Search by patient name…"
+        autocomplete="off"
+        [ngModel]="searchTerm()"
+        (ngModelChange)="onSearchChange($event)"
+      />
+    </label>
+
+    <label class="toolbar-field">
+      <span class="field-label">Status</span>
+      <select
+        class="select-input"
+        [value]="statusFilter()"
+        (change)="onStatusChange($any($event.target).value)"
+      >
+        <option value="">All</option>
+        <option value="Scheduled">Scheduled</option>
+        <option value="Completed">Completed</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+    </label>
+
+    <label class="toolbar-field">
+      <span class="field-label">From</span>
+      <input
+        class="date-input"
+        type="date"
+        [value]="fromDate()"
+        (change)="onFromDateChange($any($event.target).value)"
+      />
+    </label>
+
+    <label class="toolbar-field">
+      <span class="field-label">To</span>
+      <input
+        class="date-input"
+        type="date"
+        [value]="toDate()"
+        (change)="onToDateChange($any($event.target).value)"
+      />
+    </label>
+
+    <label class="toolbar-field">
+      <span class="field-label">Page size</span>
+      <select
+        class="select-input"
+        [value]="pageSize()"
+        (change)="onPageSizeChange($any($event.target).value)"
+      >
+        <option [value]="10">10</option>
+        <option [value]="25">25</option>
+        <option [value]="50">50</option>
+        <option [value]="100">100</option>
+      </select>
+    </label>
+  </div>
+
+  @if (loading()) {
+    <section class="state-card">Loading appointments...</section>
+  } @else if (error()) {
+    <section class="state-card error">{{ error() }}</section>
+  } @else {
+    <section class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Patient</th>
+            <th scope="col">Doctor</th>
+            <th scope="col">
+              <button type="button" class="sort-header" (click)="onSortColumn('AppointmentDate')">
+                Date &amp; time
+                @if (sortBy() === 'AppointmentDate') {
+                  <span class="sort-ind" aria-hidden="true">{{ sortDirection() === 'asc' ? '↑' : '↓' }}</span>
+                }
+              </button>
+            </th>
+            <th scope="col">
+              <button type="button" class="sort-header" (click)="onSortColumn('Status')">
+                Status
+                @if (sortBy() === 'Status') {
+                  <span class="sort-ind" aria-hidden="true">{{ sortDirection() === 'asc' ? '↑' : '↓' }}</span>
+                }
+              </button>
+            </th>
+            <th scope="col">
+              <button type="button" class="sort-header" (click)="onSortColumn('CreatedAt')">
+                Created
+                @if (sortBy() === 'CreatedAt') {
+                  <span class="sort-ind" aria-hidden="true">{{ sortDirection() === 'asc' ? '↑' : '↓' }}</span>
+                }
+              </button>
+            </th>
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of appointments()">
+            <td class="primary-cell">{{ row.patientName }}</td>
+            <td>{{ row.doctorName }}</td>
+            <td>{{ formatDateTime(row.appointmentDate) }}</td>
+            <td>{{ row.status }}</td>
+            <td>{{ formatDateTime(row.createdAt) }}</td>
+            <td class="row-actions">
+              @if (canEdit()) {
+                <a [routerLink]="['/appointments', row.id, 'edit']" class="link-btn">Edit</a>
+              }
+              @if (auth.isAdmin()) {
+                <button type="button" class="danger-btn" (click)="confirmDelete(row)">Delete</button>
+              }
+            </td>
+          </tr>
+          @if (appointments().length === 0) {
+            <tr>
+              <td colspan="6" class="empty-state">No appointments found.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      @if (totalCount() > 0) {
+        <footer class="pagination-bar">
+          <button type="button" class="page-btn" [disabled]="page() <= 1" (click)="goToPage(page() - 1)">
+            Previous
+          </button>
+          <span class="page-status">
+            Page {{ page() }} of {{ totalPages() || 1 }} · {{ pageSize() }} per page
+          </span>
+          <button
+            type="button"
+            class="page-btn"
+            [disabled]="totalPages() > 0 && page() >= totalPages()"
+            (click)="goToPage(page() + 1)"
+          >
+            Next
+          </button>
+        </footer>
+      }
+    </section>
+  }
+</main>
