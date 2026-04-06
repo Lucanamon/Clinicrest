@@ -11,7 +11,7 @@ namespace api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = Roles.Admin + "," + Roles.Doctor)]
+[Authorize(Roles = Roles.ClinicalAll)]
 public class BacklogsController(IBacklogService backlogService) : ControllerBase
 {
     [HttpGet]
@@ -75,7 +75,6 @@ public class BacklogsController(IBacklogService backlogService) : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<BacklogDto>> Create(
         [FromBody] CreateBacklogRequest request,
         CancellationToken cancellationToken = default)
@@ -97,7 +96,6 @@ public class BacklogsController(IBacklogService backlogService) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.Doctor)]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateBacklogRequest request,
@@ -137,7 +135,7 @@ public class BacklogsController(IBacklogService backlogService) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.RootAdmin)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var deleted = await backlogService.DeleteAsync(id, cancellationToken);

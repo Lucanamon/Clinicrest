@@ -1,0 +1,78 @@
+<div class="global-search" [class.open]="panelOpen()">
+  <label class="search-box">
+    <span>Search</span>
+    <input
+      type="search"
+      name="globalSearch"
+      placeholder="Search patients, appointments, backlog…"
+      autocomplete="off"
+      [formControl]="queryControl"
+      (focus)="onInputFocus()"
+      aria-autocomplete="list"
+      [attr.aria-expanded]="panelOpen()"
+      aria-controls="global-search-results"
+    />
+  </label>
+
+  @if (panelOpen()) {
+    <div
+      #resultsPanel
+      id="global-search-results"
+      class="results-panel"
+      role="listbox"
+      aria-label="Global search results"
+    >
+      @if (loading()) {
+        <div class="results-state">Searching…</div>
+      } @else {
+        @let data = results();
+        @if (data && (data.patients.length || data.appointments.length || data.backlogs.length)) {
+          @if (data.patients.length) {
+            <div class="result-group">
+              <div class="result-group-title">Patients</div>
+              <ul>
+                @for (p of data.patients; track p.id) {
+                  <li>
+                    <button type="button" class="result-row" (click)="goToPatient(p)">
+                      {{ patientLabel(p) }}
+                    </button>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+          @if (data.appointments.length) {
+            <div class="result-group">
+              <div class="result-group-title">Appointments</div>
+              <ul>
+                @for (a of data.appointments; track a.id) {
+                  <li>
+                    <button type="button" class="result-row" (click)="goToAppointment(a)">
+                      {{ appointmentLabel(a) }}
+                    </button>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+          @if (data.backlogs.length) {
+            <div class="result-group">
+              <div class="result-group-title">Backlogs</div>
+              <ul>
+                @for (b of data.backlogs; track b.id) {
+                  <li>
+                    <button type="button" class="result-row" (click)="goToBacklog(b)">
+                      {{ backlogLabel(b) }}
+                    </button>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        } @else {
+          <div class="results-state">No matches</div>
+        }
+      }
+    </div>
+  }
+</div>

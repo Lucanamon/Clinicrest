@@ -45,7 +45,7 @@ export class AppointmentFormComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    if (this.auth.isAdmin()) {
+    if (this.auth.canSelectAppointmentDoctor()) {
       this.form.controls.doctorId.setValidators([Validators.required]);
     }
     const id = this.route.snapshot.paramMap.get('id');
@@ -64,7 +64,7 @@ export class AppointmentFormComponent implements OnInit {
     this.patientService.getPaged({ pageNumber: 1, pageSize: 100 }).subscribe({
       next: (res) => {
         this.patients.set(res.items);
-        if (this.auth.isAdmin()) {
+        if (this.auth.canSelectAppointmentDoctor()) {
           this.usersService.getDoctors().subscribe({
             next: (docs) => {
               this.doctors.set(docs);
@@ -102,7 +102,7 @@ export class AppointmentFormComponent implements OnInit {
       next: (a) => {
         this.form.patchValue({
           patientId: a.patientId,
-          doctorId: this.auth.isAdmin() ? a.doctorId : '',
+          doctorId: this.auth.canSelectAppointmentDoctor() ? a.doctorId : '',
           appointmentDate: this.toDatetimeLocal(a.appointmentDate),
           status: a.status,
           notes: a.notes ?? ''
@@ -132,7 +132,7 @@ export class AppointmentFormComponent implements OnInit {
     };
 
     const id = this.route.snapshot.paramMap.get('id');
-    if (this.auth.isAdmin()) {
+    if (this.auth.canSelectAppointmentDoctor()) {
       const payload = { ...base, doctorId: v.doctorId.trim() };
       if (id) {
         this.appointmentService.update(id, payload).subscribe({
@@ -176,6 +176,6 @@ export class AppointmentFormComponent implements OnInit {
   }
 
   showDoctorField(): boolean {
-    return this.auth.isAdmin();
+    return this.auth.canSelectAppointmentDoctor();
   }
 }

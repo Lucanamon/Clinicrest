@@ -1,0 +1,106 @@
+.users-shell {
+  max-width: 960px;
+}
+
+.users-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.users-header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  color: #0f172a;
+}
+
+.users-header p {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  background: #0ea5e9;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.88rem;
+  text-decoration: none;
+}
+
+.action-btn:hover {
+  background: #0284c7;
+}
+
+.state-card {
+  padding: 1.25rem;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+}
+
+.state-card.error {
+  border-color: #fecaca;
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.table-card {
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  overflow: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.data-table th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.row-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.danger-btn {
+  border: 1px solid #fecaca;
+  background: #fff;
+  color: #b91c1c;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.danger-btn:hover {
+  background: #fef2f2;
+}
+
+.empty-state {
+  text-align: center;
+  color: #64748b;
+  padding: 1.5rem !important;
+}

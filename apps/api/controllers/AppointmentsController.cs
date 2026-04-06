@@ -11,7 +11,7 @@ namespace api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = Roles.Admin + "," + Roles.Doctor)]
+[Authorize(Roles = Roles.ClinicalAll)]
 public class AppointmentsController(IAppointmentService appointmentService) : ControllerBase
 {
     [HttpGet]
@@ -147,7 +147,7 @@ public class AppointmentsController(IAppointmentService appointmentService) : Co
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.RootAdmin)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var deleted = await appointmentService.DeleteAsync(id, cancellationToken);

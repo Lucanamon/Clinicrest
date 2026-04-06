@@ -93,13 +93,13 @@ public class BacklogService(IBacklogRepository backlogRepository, IUserRepositor
             return false;
         }
 
-        if (string.Equals(currentRole, Roles.Admin, StringComparison.Ordinal))
+        if (Roles.IsRootAdmin(currentRole))
         {
             await ValidateAssigneeAsync(request.AssignedToUserId, cancellationToken);
         }
         else if (request.AssignedToUserId != currentUserId)
         {
-            throw new InvalidOperationException("Doctors cannot reassign backlog items.");
+            throw new InvalidOperationException("Only RootAdmin may reassign a backlog item to another user.");
         }
 
         ValidatePriorityAndStatus(request.Priority, request.Status);
@@ -115,7 +115,12 @@ public class BacklogService(IBacklogRepository backlogRepository, IUserRepositor
 
     private static Guid? GetRestrictAssigneeId(Guid currentUserId, string currentRole)
     {
-        return string.Equals(currentRole, Roles.Doctor, StringComparison.Ordinal) ? currentUserId : null;
+        if (Roles.IsRootAdmin(currentRole))
+        {
+            return null;
+        }
+
+        return currentUserId;
     }
 
     private async Task ValidateAssigneeAsync(Guid userId, CancellationToken cancellationToken)

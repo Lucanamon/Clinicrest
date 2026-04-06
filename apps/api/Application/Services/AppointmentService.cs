@@ -31,11 +31,11 @@ public class AppointmentService(
         }
 
         Guid doctorId;
-        if (string.Equals(currentRole, Roles.Admin, StringComparison.Ordinal))
+        if (Roles.CanAssignAppointmentDoctor(currentRole))
         {
             if (!request.DoctorId.HasValue)
             {
-                throw new InvalidOperationException("DoctorId is required for Admin.");
+                throw new InvalidOperationException("DoctorId is required.");
             }
 
             doctorId = request.DoctorId.Value;
@@ -45,9 +45,13 @@ public class AppointmentService(
                 throw new InvalidOperationException("Doctor not found or invalid role.");
             }
         }
-        else
+        else if (Roles.IsDoctor(currentRole))
         {
             doctorId = currentUserId;
+        }
+        else
+        {
+            throw new InvalidOperationException("Invalid role for creating appointments.");
         }
 
         var status = request.Status.Trim();
@@ -129,11 +133,11 @@ public class AppointmentService(
         }
 
         Guid doctorId;
-        if (string.Equals(currentRole, Roles.Admin, StringComparison.Ordinal))
+        if (Roles.CanAssignAppointmentDoctor(currentRole))
         {
             if (!request.DoctorId.HasValue)
             {
-                throw new InvalidOperationException("DoctorId is required for Admin.");
+                throw new InvalidOperationException("DoctorId is required.");
             }
 
             doctorId = request.DoctorId.Value;
@@ -143,9 +147,13 @@ public class AppointmentService(
                 throw new InvalidOperationException("Doctor not found or invalid role.");
             }
         }
-        else
+        else if (Roles.IsDoctor(currentRole))
         {
             doctorId = currentUserId;
+        }
+        else
+        {
+            throw new InvalidOperationException("Invalid role for updating appointments.");
         }
 
         var status = request.Status.Trim();

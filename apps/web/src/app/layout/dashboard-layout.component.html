@@ -18,15 +18,17 @@
       <a routerLink="/backlog" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
         Backlog
       </a>
+      @if (auth.isRootAdmin()) {
+        <a routerLink="/users" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          Users
+        </a>
+      }
     </nav>
   </aside>
 
   <div class="main-panel">
     <header class="topbar">
-      <label class="search-box">
-        <span>Search</span>
-        <input type="search" placeholder="Search patients, appointments..." />
-      </label>
+      <app-global-search />
 
       <button class="user-pill" type="button" (click)="logout()">
         <span class="avatar">DR</span>

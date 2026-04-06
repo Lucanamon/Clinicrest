@@ -62,6 +62,11 @@
               <span class="field-error">Required</span>
             }
           </label>
+        } @else if (!isEdit()) {
+          <div class="field field-span readonly-assignee">
+            <span>Assigned to</span>
+            <p>This task will be assigned to you.</p>
+          </div>
         } @else if (isEdit()) {
           <div class="field field-span readonly-assignee">
             <span>Assigned to</span>

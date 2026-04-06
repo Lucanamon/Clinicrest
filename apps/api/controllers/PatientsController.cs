@@ -11,7 +11,7 @@ namespace api.Controllers;
 public class PatientsController(IPatientService patientService) : ControllerBase
 {
     [HttpGet]
-    [Authorize(Roles = Roles.Admin + "," + Roles.Doctor)]
+    [Authorize(Roles = Roles.ClinicalAll)]
     public async Task<ActionResult<PagedResult<PatientDto>>> GetPatients(
         [FromQuery] PatientQueryParams query,
         CancellationToken cancellationToken = default)
@@ -36,7 +36,7 @@ public class PatientsController(IPatientService patientService) : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.Doctor)]
+    [Authorize(Roles = Roles.ClinicalAll)]
     public async Task<ActionResult<PatientDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var patient = await patientService.GetByIdAsync(id, cancellationToken);
@@ -49,7 +49,7 @@ public class PatientsController(IPatientService patientService) : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.ClinicalAll)]
     public async Task<ActionResult<PatientDto>> Create(
         [FromBody] CreatePatientRequest request,
         CancellationToken cancellationToken)
@@ -64,7 +64,7 @@ public class PatientsController(IPatientService patientService) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.ClinicalAll)]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdatePatientRequest request,
@@ -85,7 +85,7 @@ public class PatientsController(IPatientService patientService) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.ClinicalAll)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await patientService.DeleteAsync(id, cancellationToken);

@@ -195,6 +195,6 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
   }
 
   canEdit(): boolean {
-    return this.auth.isAdmin() || this.auth.isDoctor();
+    return this.auth.isClinicalStaff();
   }
 }

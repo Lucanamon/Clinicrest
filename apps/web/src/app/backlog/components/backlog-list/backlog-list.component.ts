@@ -197,9 +197,10 @@ export class BacklogListComponent implements OnInit, OnDestroy {
   }
 
   canEdit(row: BacklogDto): boolean {
-    if (this.auth.isAdmin()) {
+    if (this.auth.isRootAdmin()) {
       return true;
     }
-    return this.auth.isDoctor() && this.auth.getUserId() === row.assignedToUserId;
+    const uid = this.auth.getUserId();
+    return uid !== null && uid === row.assignedToUserId;
   }
 }

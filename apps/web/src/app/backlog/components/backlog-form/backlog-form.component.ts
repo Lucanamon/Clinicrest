@@ -8,7 +8,7 @@ import {
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { BacklogService } from '../../backlog.service';
 import { AuthService } from '../../../services/auth';
-import { UserListItemDto, UsersService } from '../../../users/users.service';
+import { UserDto, UsersService } from '../../../users/users.service';
 
 @Component({
   selector: 'app-backlog-form',
@@ -30,7 +30,7 @@ export class BacklogFormComponent implements OnInit {
   readonly loadError = signal<string | null>(null);
   readonly saveError = signal<string | null>(null);
   readonly isEdit = signal(false);
-  readonly users = signal<UserListItemDto[]>([]);
+  readonly users = signal<UserDto[]>([]);
   readonly lookupsLoading = signal(true);
   readonly assignedLabel = signal<string | null>(null);
 
@@ -53,9 +53,13 @@ export class BacklogFormComponent implements OnInit {
     }
     if (id) {
       this.loadBacklog(id);
-    } else if (this.auth.isAdmin()) {
+    } else if (this.auth.isRootAdmin()) {
       this.loadUsers();
     } else {
+      const uid = this.auth.getUserId();
+      if (uid) {
+        this.form.patchValue({ assignedToUserId: uid });
+      }
       this.lookupsLoading.set(false);
     }
   }
@@ -86,7 +90,7 @@ export class BacklogFormComponent implements OnInit {
           status: b.status,
           assignedToUserId: b.assignedToUserId
         });
-        if (this.auth.isAdmin()) {
+        if (this.auth.isRootAdmin()) {
           this.loadUsersWhileEditing();
         } else {
           this.form.controls.assignedToUserId.disable();
@@ -152,6 +156,6 @@ export class BacklogFormComponent implements OnInit {
   }
 
   showAssigneeSelect(): boolean {
-    return this.auth.isAdmin();
+    return this.auth.isRootAdmin();
   }
 }

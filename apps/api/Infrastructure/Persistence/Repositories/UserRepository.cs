@@ -26,4 +26,30 @@ public class UserRepository(ApplicationDbContext dbContext) : IUserRepository
             .OrderBy(u => u.Username)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<bool> ExistsUsernameAsync(string username, CancellationToken cancellationToken = default)
+    {
+        var normalized = username.Trim();
+        return await dbContext.Users.AsNoTracking()
+            .AnyAsync(u => u.Username == normalized, cancellationToken);
+    }
+
+    public async Task AddAsync(User user, CancellationToken cancellationToken = default)
+    {
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+        if (user is null)
+        {
+            return false;
+        }
+
+        dbContext.Users.Remove(user);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
 }

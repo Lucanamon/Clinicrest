@@ -7,7 +7,7 @@
 
     <div class="header-metrics">
       <span class="metric-pill">{{ totalCount() }} total</span>
-      @if (auth.isAdmin()) {
+      @if (auth.isClinicalStaff()) {
         <a routerLink="/backlog/new" class="action-btn">+ New task</a>
       }
     </div>
@@ -127,7 +127,7 @@
               @if (canEdit(row)) {
                 <a [routerLink]="['/backlog', row.id, 'edit']" class="link-btn">Edit</a>
               }
-              @if (auth.isAdmin()) {
+              @if (auth.isRootAdmin()) {
                 <button type="button" class="danger-btn" (click)="confirmDelete(row)">Delete</button>
               }
             </td>

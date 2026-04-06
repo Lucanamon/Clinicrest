@@ -9,4 +9,11 @@ public interface IUserRepository
     Task<IReadOnlyList<User>> GetDoctorsAsync(CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<User>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    Task<bool> ExistsUsernameAsync(string username, CancellationToken cancellationToken = default);
+
+    Task AddAsync(User user, CancellationToken cancellationToken = default);
+
+    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }
+

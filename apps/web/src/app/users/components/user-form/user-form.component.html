@@ -1,0 +1,49 @@
+<div class="form-shell">
+  <header class="form-header">
+    <div>
+      <h1>New user</h1>
+      <p>Create a Doctor, Nurse, or Administrator account.</p>
+    </div>
+    <a routerLink="/users" class="back-link">← Back to list</a>
+  </header>
+
+  @if (saveError()) {
+    <section class="state-card error">{{ saveError() }}</section>
+  }
+
+  <form class="user-form" [formGroup]="form" (ngSubmit)="submit()">
+    <div class="field-grid">
+      <label class="field">
+        <span>Username *</span>
+        <input type="text" formControlName="username" autocomplete="username" />
+        @if (form.controls.username.touched && form.controls.username.invalid) {
+          <span class="field-error">Required</span>
+        }
+      </label>
+
+      <label class="field">
+        <span>Password *</span>
+        <input type="password" formControlName="password" autocomplete="new-password" />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <span class="field-error">At least 8 characters</span>
+        }
+      </label>
+
+      <label class="field field-span">
+        <span>Role *</span>
+        <select formControlName="role">
+          @for (r of roleOptions; track r) {
+            <option [value]="r">{{ r }}</option>
+          }
+        </select>
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cancel()" [disabled]="saving()">Cancel</button>
+      <button type="submit" class="btn-primary" [disabled]="saving()">
+        {{ saving() ? 'Creating…' : 'Create user' }}
+      </button>
+    </div>
+  </form>
+</div>

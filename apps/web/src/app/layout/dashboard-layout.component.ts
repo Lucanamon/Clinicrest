@@ -1,19 +1,18 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../services/auth';
+import { GlobalSearchComponent } from './global-search/global-search.component';
 
 @Component({
   selector: 'app-dashboard-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, GlobalSearchComponent],
   templateUrl: './dashboard-layout.component.html',
   styleUrl: './dashboard-layout.component.scss'
 })
 export class DashboardLayoutComponent {
-  constructor(
-    private readonly auth: AuthService,
-    private readonly router: Router
-  ) {}
+  readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
 
   get username(): string {
     return this.auth.getUsername();

@@ -57,6 +57,8 @@ builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IBacklogRepository, BacklogRepository>();
 builder.Services.AddScoped<IBacklogService, BacklogService>();
+builder.Services.AddScoped<IGlobalSearchService, GlobalSearchService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 
@@ -161,7 +163,7 @@ static async Task SeedRootAdminAsync(WebApplication app)
             Id = Guid.NewGuid(),
             Username = seedUsername,
             PasswordHash = string.Empty,
-            Role = Roles.Admin
+            Role = Roles.RootAdmin
         };
 
         newUser.PasswordHash = passwordHasher.HashPassword(newUser, seedPassword);

@@ -74,7 +74,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
             entity.Property(u => u.Role)
                 .IsRequired()
-                .HasMaxLength(16);
+                .HasMaxLength(32);
+
+            entity.Property(u => u.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("NOW()");
 
             entity.HasIndex(u => u.Username)
                 .HasDatabaseName("ix_users_username_unique")
@@ -192,6 +196,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         }
 
         foreach (var entry in ChangeTracker.Entries<Backlog>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.CreatedAt = utcNow;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<User>())
         {
             if (entry.State == EntityState.Added)
             {

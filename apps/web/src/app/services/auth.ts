@@ -78,17 +78,34 @@ export class AuthService {
     return this.getStorageItem(USER_ID_KEY);
   }
 
-  isAdmin(): boolean {
-    return this.getRole() === 'Admin';
+  /** Full control of users and accounts (JWT claim). */
+  isRootAdmin(): boolean {
+    return this.getRole() === 'RootAdmin';
+  }
+
+  /** Any clinical role that may use the app (patients, appointments, etc.). */
+  isClinicalStaff(): boolean {
+    const r = this.getRole();
+    return (
+      r === 'RootAdmin' ||
+      r === 'Doctor' ||
+      r === 'Nurse' ||
+      r === 'Administrator'
+    );
+  }
+
+  canManagePatients(): boolean {
+    return this.isClinicalStaff();
+  }
+
+  /** May choose which doctor an appointment is for (not the doctor role). */
+  canSelectAppointmentDoctor(): boolean {
+    const r = this.getRole();
+    return r === 'RootAdmin' || r === 'Nurse' || r === 'Administrator';
   }
 
   isDoctor(): boolean {
     return this.getRole() === 'Doctor';
-  }
-
-  isAdminOrDoctor(): boolean {
-    const role = this.getRole();
-    return role === 'Admin' || role === 'Doctor';
   }
 
   private getStorageItem(key: string): string | null {

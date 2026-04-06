@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
-import { adminGuard } from './guards/admin.guard';
 import { authGuard } from './guards/auth.guard';
+import { rootAdminGuard } from './guards/root-admin.guard';
 import { AppointmentFormComponent } from './appointment/components/appointment-form/appointment-form.component';
 import { AppointmentListComponent } from './appointment/components/appointment-list/appointment-list.component';
 import { BacklogFormComponent } from './backlog/components/backlog-form/backlog-form.component';
@@ -12,6 +12,9 @@ import { AppointmentsPage } from './pages/appointments/appointments.page';
 import { BacklogPage } from './pages/backlog/backlog.page';
 import { LoginPage } from './pages/login/login.page';
 import { PatientsPage } from './pages/patients/patients.page';
+import { UsersPage } from './pages/users/users.page';
+import { UserFormComponent } from './users/components/user-form/user-form.component';
+import { UserListComponent } from './users/components/user-list/user-list.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginPage },
@@ -26,8 +29,9 @@ export const routes: Routes = [
         component: PatientsPage,
         children: [
           { path: '', component: PatientListComponent },
-          { path: 'new', component: PatientFormComponent, canActivate: [adminGuard] },
-          { path: ':id/edit', component: PatientFormComponent, canActivate: [adminGuard] }
+          { path: 'new', component: PatientFormComponent },
+          { path: ':id/edit', component: PatientFormComponent },
+          { path: ':id', component: PatientFormComponent }
         ]
       },
       {
@@ -36,7 +40,8 @@ export const routes: Routes = [
         children: [
           { path: '', component: AppointmentListComponent },
           { path: 'new', component: AppointmentFormComponent },
-          { path: ':id/edit', component: AppointmentFormComponent }
+          { path: ':id/edit', component: AppointmentFormComponent },
+          { path: ':id', component: AppointmentFormComponent }
         ]
       },
       {
@@ -44,8 +49,18 @@ export const routes: Routes = [
         component: BacklogPage,
         children: [
           { path: '', component: BacklogListComponent },
-          { path: 'new', component: BacklogFormComponent, canActivate: [adminGuard] },
-          { path: ':id/edit', component: BacklogFormComponent }
+          { path: 'new', component: BacklogFormComponent },
+          { path: ':id/edit', component: BacklogFormComponent },
+          { path: ':id', component: BacklogFormComponent }
+        ]
+      },
+      {
+        path: 'users',
+        component: UsersPage,
+        canActivate: [rootAdminGuard],
+        children: [
+          { path: '', component: UserListComponent },
+          { path: 'new', component: UserFormComponent }
         ]
       }
     ]

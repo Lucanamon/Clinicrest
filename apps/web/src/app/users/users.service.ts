@@ -7,9 +7,16 @@ export interface DoctorListItemDto {
   username: string;
 }
 
-export interface UserListItemDto {
+export interface UserDto {
   id: string;
   username: string;
+  role: string;
+  createdAt: string;
+}
+
+export interface CreateUserRequest {
+  username: string;
+  password: string;
   role: string;
 }
 
@@ -18,12 +25,21 @@ export interface UserListItemDto {
 })
 export class UsersService {
   private readonly http = inject(HttpClient);
+  private readonly baseUrl = '/api/users';
 
   getDoctors(): Observable<DoctorListItemDto[]> {
-    return this.http.get<DoctorListItemDto[]>('/api/users/doctors');
+    return this.http.get<DoctorListItemDto[]>(`${this.baseUrl}/doctors`);
   }
 
-  getUsers(): Observable<UserListItemDto[]> {
-    return this.http.get<UserListItemDto[]>('/api/users');
+  getUsers(): Observable<UserDto[]> {
+    return this.http.get<UserDto[]>(this.baseUrl);
+  }
+
+  createUser(request: CreateUserRequest): Observable<UserDto> {
+    return this.http.post<UserDto>(this.baseUrl, request);
+  }
+
+  deleteUser(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 }

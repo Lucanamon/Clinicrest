@@ -124,7 +124,7 @@
               @if (canEdit()) {
                 <a [routerLink]="['/appointments', row.id, 'edit']" class="link-btn">Edit</a>
               }
-              @if (auth.isAdmin()) {
+              @if (auth.isRootAdmin()) {
                 <button type="button" class="danger-btn" (click)="confirmDelete(row)">Delete</button>
               }
             </td>

@@ -1,0 +1,45 @@
+<main class="users-shell">
+  <header class="users-header">
+    <div>
+      <h1>Users</h1>
+      <p>Manage accounts (RootAdmin only)</p>
+    </div>
+    <a routerLink="/users/new" class="action-btn">+ New user</a>
+  </header>
+
+  @if (loading()) {
+    <section class="state-card">Loading…</section>
+  } @else if (error()) {
+    <section class="state-card error">{{ error() }}</section>
+  } @else {
+    <section class="table-card">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Username</th>
+            <th scope="col">Role</th>
+            <th scope="col">Created</th>
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of users()">
+            <td>{{ row.username }}</td>
+            <td>{{ row.role }}</td>
+            <td>{{ formatDate(row.createdAt) }}</td>
+            <td class="row-actions">
+              @if (canDelete(row)) {
+                <button type="button" class="danger-btn" (click)="confirmDelete(row)">Delete</button>
+              }
+            </td>
+          </tr>
+          @if (users().length === 0) {
+            <tr>
+              <td colspan="4" class="empty-state">No users found.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+</main>
