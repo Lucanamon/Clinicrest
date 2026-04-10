@@ -46,14 +46,12 @@ public class UserService(IUserRepository userRepository) : IUserService
         }
 
         var hash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 11);
-        var utcNow = DateTime.UtcNow;
         var user = new User
         {
             Id = Guid.NewGuid(),
             Username = username,
             PasswordHash = hash,
-            Role = role,
-            CreatedAt = utcNow
+            Role = role
         };
 
         await userRepository.AddAsync(user, cancellationToken);

@@ -67,9 +67,7 @@ public class AppointmentService(
             DoctorId = doctorId,
             AppointmentDate = NormalizeUtc(request.AppointmentDate),
             Status = status,
-            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
-            IsDeleted = false,
-            DeletedAt = null
+            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim()
         };
 
         await appointmentRepository.AddAsync(appointment, cancellationToken);

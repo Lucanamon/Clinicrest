@@ -12,6 +12,7 @@ import { AppointmentsPage } from './pages/appointments/appointments.page';
 import { BacklogPage } from './pages/backlog/backlog.page';
 import { LoginPage } from './pages/login/login.page';
 import { PatientsPage } from './pages/patients/patients.page';
+import { AuditLogPage } from './pages/audit-log/audit-log.page';
 import { UsersPage } from './pages/users/users.page';
 import { UserFormComponent } from './users/components/user-form/user-form.component';
 import { UserListComponent } from './users/components/user-list/user-list.component';
@@ -62,6 +63,11 @@ export const routes: Routes = [
           { path: '', component: UserListComponent },
           { path: 'new', component: UserFormComponent }
         ]
+      },
+      {
+        path: 'audit-logs',
+        component: AuditLogPage,
+        canActivate: [rootAdminGuard]
       }
     ]
   },

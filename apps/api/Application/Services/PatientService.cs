@@ -10,7 +10,6 @@ public class PatientService(IPatientRepository repository) : IPatientService
         CreatePatientRequest request,
         CancellationToken cancellationToken = default)
     {
-        var utcNow = DateTime.UtcNow;
         var patient = new Patient
         {
             Id = Guid.NewGuid(),
@@ -18,10 +17,7 @@ public class PatientService(IPatientRepository repository) : IPatientService
             LastName = request.LastName.Trim(),
             DateOfBirth = DateTime.SpecifyKind(request.DateOfBirth.Date, DateTimeKind.Utc),
             Gender = request.Gender.Trim(),
-            PhoneNumber = request.PhoneNumber.Trim(),
-            CreatedAt = utcNow,
-            IsDeleted = false,
-            DeletedAt = null
+            PhoneNumber = request.PhoneNumber.Trim()
         };
 
         await repository.AddAsync(patient, cancellationToken);

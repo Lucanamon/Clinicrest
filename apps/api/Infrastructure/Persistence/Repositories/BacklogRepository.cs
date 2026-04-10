@@ -23,8 +23,7 @@ public class BacklogRepository(ApplicationDbContext dbContext) : IBacklogReposit
             return false;
         }
 
-        backlog.IsDeleted = true;
-        backlog.DeletedAt = DateTime.UtcNow;
+        dbContext.Backlogs.Remove(backlog);
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -37,7 +36,7 @@ public class BacklogRepository(ApplicationDbContext dbContext) : IBacklogReposit
         IQueryable<Backlog> query = dbContext.Backlogs
             .AsNoTracking()
             .Include(b => b.AssignedTo)
-            .Where(b => !b.IsDeleted);
+            .Where(b => !b.IsDeleted && !b.AssignedTo.IsDeleted);
 
         if (restrictToDoctorId.HasValue)
         {
@@ -85,7 +84,7 @@ public class BacklogRepository(ApplicationDbContext dbContext) : IBacklogReposit
         IQueryable<Backlog> query = dbContext.Backlogs
             .AsNoTracking()
             .Include(b => b.AssignedTo)
-            .Where(b => b.Id == id && !b.IsDeleted);
+            .Where(b => b.Id == id && !b.IsDeleted && !b.AssignedTo.IsDeleted);
 
         if (restrictToDoctorId.HasValue)
         {
@@ -100,7 +99,8 @@ public class BacklogRepository(ApplicationDbContext dbContext) : IBacklogReposit
         Guid? restrictToDoctorId,
         CancellationToken cancellationToken = default)
     {
-        IQueryable<Backlog> query = dbContext.Backlogs.Where(b => b.Id == id && !b.IsDeleted);
+        IQueryable<Backlog> query = dbContext.Backlogs
+            .Where(b => b.Id == id && !b.IsDeleted && !b.AssignedTo.IsDeleted);
 
         if (restrictToDoctorId.HasValue)
         {

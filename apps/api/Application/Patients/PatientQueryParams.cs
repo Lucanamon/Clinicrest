@@ -14,8 +14,9 @@ public class PatientQueryParams
 
     public DateTime? ToDateOfBirth { get; set; }
 
+    /// <summary>Logical sort: "name" (FirstName, then LastName) or "createdAt".</summary>
     public string? SortBy { get; set; }
 
-    /// <summary>asc or desc (case-insensitive).</summary>
+    /// <summary>"asc" or "desc" (case-insensitive).</summary>
     public string? SortDirection { get; set; }
 }

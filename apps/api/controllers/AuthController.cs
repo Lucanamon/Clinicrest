@@ -28,7 +28,7 @@ public class AuthController(
 
         var user = await dbContext.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Username == request.Username.Trim());
+            .FirstOrDefaultAsync(u => u.Username == request.Username.Trim() && !u.IsDeleted);
 
         if (user is null || !AuthPasswordValidation.VerifyPassword(passwordHasher, user, request.Password))
         {

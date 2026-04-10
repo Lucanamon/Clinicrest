@@ -16,6 +16,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { Subject, Subscription, debounceTime } from 'rxjs';
 import { PatientDto, PatientService } from '../../patient.service';
 import { AuthService } from '../../../services/auth';
+import { toggleSort } from '../../../shared/sorting/toggle-sort';
 
 @Component({
   selector: 'app-patient-list',
@@ -127,14 +128,13 @@ export class PatientListComponent implements OnInit, OnDestroy {
     this.loadPatients();
   }
 
-  onSortColumn(column: string): void {
-    const current = this.patientService.getSortBySnapshot();
-    const dir = this.patientService.getSortDirectionSnapshot();
-    if (current === column) {
-      this.patientService.setSort(column, dir === 'asc' ? 'desc' : 'asc');
-    } else {
-      this.patientService.setSort(column, 'asc');
-    }
+  onSort(column: string): void {
+    const next = toggleSort(
+      column,
+      this.patientService.getSortBySnapshot(),
+      this.patientService.getSortDirectionSnapshot()
+    );
+    this.patientService.setSort(next.sortBy, next.sortDirection);
     this.loadPatients();
   }
 

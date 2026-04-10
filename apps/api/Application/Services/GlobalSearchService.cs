@@ -56,7 +56,7 @@ public class GlobalSearchService(ApplicationDbContext dbContext) : IGlobalSearch
             .AsNoTracking()
             .Include(a => a.Patient)
             .Include(a => a.Doctor)
-            .Where(a => !a.IsDeleted && !a.Patient.IsDeleted &&
+            .Where(a => !a.IsDeleted && !a.Patient.IsDeleted && !a.Doctor.IsDeleted &&
                 (EF.Functions.ILike(a.Patient.FirstName, pattern) ||
                  EF.Functions.ILike(a.Patient.LastName, pattern) ||
                  (a.Notes != null && EF.Functions.ILike(a.Notes, pattern))));
@@ -76,7 +76,7 @@ public class GlobalSearchService(ApplicationDbContext dbContext) : IGlobalSearch
         var backlogsQuery = dbContext.Backlogs
             .AsNoTracking()
             .Include(b => b.AssignedTo)
-            .Where(b => !b.IsDeleted &&
+            .Where(b => !b.IsDeleted && !b.AssignedTo.IsDeleted &&
                 (EF.Functions.ILike(b.Title, pattern) ||
                  (b.Description != null && EF.Functions.ILike(b.Description, pattern))));
 

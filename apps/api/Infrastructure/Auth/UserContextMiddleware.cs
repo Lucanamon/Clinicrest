@@ -14,7 +14,7 @@ public class UserContextMiddleware(RequestDelegate next)
             {
                 var user = await dbContext.Users
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(u => u.Username == username);
+                    .FirstOrDefaultAsync(u => u.Username == username && !u.IsDeleted);
 
                 if (user is not null)
                 {

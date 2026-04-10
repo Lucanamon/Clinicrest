@@ -85,18 +85,10 @@
       <table>
         <thead>
           <tr>
-            <th scope="col">
-              <button type="button" class="sort-header" (click)="onSortColumn('FirstName')">
-                First name
-                @if (sortBy() === 'FirstName') {
-                  <span class="sort-ind" aria-hidden="true">{{ sortDirection() === 'asc' ? '↑' : '↓' }}</span>
-                }
-              </button>
-            </th>
-            <th scope="col">
-              <button type="button" class="sort-header" (click)="onSortColumn('LastName')">
-                Last name
-                @if (sortBy() === 'LastName') {
+            <th scope="colgroup" colspan="2">
+              <button type="button" class="sort-header" (click)="onSort('name')">
+                Name
+                @if (sortBy() === 'name') {
                   <span class="sort-ind" aria-hidden="true">{{ sortDirection() === 'asc' ? '↑' : '↓' }}</span>
                 }
               </button>
@@ -105,9 +97,9 @@
             <th scope="col">Gender</th>
             <th scope="col">Phone</th>
             <th scope="col">
-              <button type="button" class="sort-header" (click)="onSortColumn('CreatedAt')">
+              <button type="button" class="sort-header" (click)="onSort('createdAt')">
                 Registered
-                @if (sortBy() === 'CreatedAt') {
+                @if (sortBy() === 'createdAt') {
                   <span class="sort-ind" aria-hidden="true">{{ sortDirection() === 'asc' ? '↑' : '↓' }}</span>
                 }
               </button>

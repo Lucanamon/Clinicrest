@@ -1,9 +1,7 @@
 namespace api.Domain.Entities;
 
-public class Backlog
+public class Backlog : AuditableEntity
 {
-    public Guid Id { get; set; }
-
     public required string Title { get; set; }
 
     public string? Description { get; set; }
@@ -15,10 +13,4 @@ public class Backlog
     public Guid AssignedToUserId { get; set; }
 
     public User AssignedTo { get; set; } = null!;
-
-    public DateTime CreatedAt { get; set; }
-
-    public bool IsDeleted { get; set; }
-
-    public DateTime? DeletedAt { get; set; }
 }

@@ -34,9 +34,7 @@ public class BacklogService(IBacklogRepository backlogRepository, IUserRepositor
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             Priority = request.Priority.Trim(),
             Status = request.Status.Trim(),
-            AssignedToUserId = request.AssignedToUserId,
-            IsDeleted = false,
-            DeletedAt = null
+            AssignedToUserId = request.AssignedToUserId
         };
 
         await backlogRepository.AddAsync(backlog, cancellationToken);

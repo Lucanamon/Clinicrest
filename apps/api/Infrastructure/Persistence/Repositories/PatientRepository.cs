@@ -23,8 +23,7 @@ public class PatientRepository(ApplicationDbContext dbContext) : IPatientReposit
             return false;
         }
 
-        patient.IsDeleted = true;
-        patient.DeletedAt = DateTime.UtcNow;
+        dbContext.Patients.Remove(patient);
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -92,29 +91,25 @@ public class PatientRepository(ApplicationDbContext dbContext) : IPatientReposit
         return true;
     }
 
-    private static readonly HashSet<string> AllowedSortProperties =
-    [
-        nameof(Patient.FirstName),
-        nameof(Patient.LastName),
-        nameof(Patient.CreatedAt),
-        nameof(Patient.DateOfBirth),
-        nameof(Patient.Gender),
-        nameof(Patient.PhoneNumber)
-    ];
-
     private static IQueryable<Patient> ApplyOrdering(IQueryable<Patient> queryable, PatientQueryParams queryParams)
     {
         if (!string.IsNullOrWhiteSpace(queryParams.SortBy))
         {
             var sortBy = queryParams.SortBy.Trim();
-            if (AllowedSortProperties.Contains(sortBy))
-            {
-                if (string.Equals(queryParams.SortDirection, "desc", StringComparison.OrdinalIgnoreCase))
-                {
-                    return queryable.OrderByDescending(x => EF.Property<object>(x, sortBy));
-                }
+            var desc = string.Equals(queryParams.SortDirection, "desc", StringComparison.OrdinalIgnoreCase);
 
-                return queryable.OrderBy(x => EF.Property<object>(x, sortBy));
+            if (string.Equals(sortBy, "name", StringComparison.OrdinalIgnoreCase))
+            {
+                return desc
+                    ? queryable.OrderByDescending(x => x.FirstName).ThenByDescending(x => x.LastName)
+                    : queryable.OrderBy(x => x.FirstName).ThenBy(x => x.LastName);
+            }
+
+            if (string.Equals(sortBy, "createdAt", StringComparison.OrdinalIgnoreCase))
+            {
+                return desc
+                    ? queryable.OrderByDescending(x => x.CreatedAt)
+                    : queryable.OrderBy(x => x.CreatedAt);
             }
         }
 

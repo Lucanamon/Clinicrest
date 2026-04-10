@@ -1,0 +1,87 @@
+<main class="audit-shell">
+  <header class="audit-header">
+    <div>
+      <h1>Audit log</h1>
+      <p>Who changed what (RootAdmin only)</p>
+    </div>
+    <div class="pager" role="navigation" aria-label="Pagination">
+      <button type="button" class="page-btn" (click)="prevPage()" [disabled]="pageNumber() <= 1 || loading()">
+        Previous
+      </button>
+      <span class="page-meta">
+        Page {{ pageNumber() }} / {{ totalPages() }} · {{ totalCount() }} entries
+      </span>
+      <button
+        type="button"
+        class="page-btn"
+        (click)="nextPage()"
+        [disabled]="pageNumber() >= totalPages() || loading()"
+      >
+        Next
+      </button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <section class="state-card">Loading…</section>
+  } @else if (error()) {
+    <section class="state-card error">{{ error() }}</section>
+  } @else {
+    <section class="table-card">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col" class="col-expand"></th>
+            <th scope="col">User</th>
+            <th scope="col">Action</th>
+            <th scope="col">Entity</th>
+            <th scope="col">Timestamp</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.id) {
+            <tr
+              class="data-row"
+              [ngClass]="{ expanded: isExpanded(row.id) }"
+              (click)="toggleExpand(row.id)"
+              (keydown.enter)="toggleExpand(row.id)"
+              (keydown.space)="$event.preventDefault(); toggleExpand(row.id)"
+              tabindex="0"
+              role="button"
+              [attr.aria-expanded]="isExpanded(row.id)"
+            >
+              <td class="col-expand">
+                <span class="chevron" [class.open]="isExpanded(row.id)" aria-hidden="true">▸</span>
+              </td>
+              <td>{{ displayUser(row) }}</td>
+              <td><span class="pill">{{ row.action }}</span></td>
+              <td>{{ row.entityName }} <span class="muted">#{{ row.entityId }}</span></td>
+              <td>{{ formatTimestamp(row.timestamp) }}</td>
+            </tr>
+            @if (isExpanded(row.id)) {
+              <tr class="detail-row">
+                <td colspan="5">
+                  <div class="json-grid">
+                    <div>
+                      <h3>Old values</h3>
+                      <pre class="json-block">{{ prettyJson(row.oldValues) }}</pre>
+                    </div>
+                    <div>
+                      <h3>New values</h3>
+                      <pre class="json-block">{{ prettyJson(row.newValues) }}</pre>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+          @if (rows().length === 0) {
+            <tr>
+              <td colspan="5" class="empty-state">No audit entries yet.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+</main>

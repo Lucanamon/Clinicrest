@@ -50,7 +50,7 @@ export class PatientService {
   private readonly baseUrl = '/api/patients';
 
   private readonly searchTerm$ = new BehaviorSubject<string>('');
-  private readonly sortBy$ = new BehaviorSubject<string>('CreatedAt');
+  private readonly sortBy$ = new BehaviorSubject<string>('createdAt');
   private readonly sortDirection$ = new BehaviorSubject<'asc' | 'desc'>('desc');
 
   setSearchTerm(term: string): void {
@@ -109,11 +109,8 @@ export class PatientService {
     const sortBy = params?.sortBy;
     const sortDirection = params?.sortDirection;
     if (sortBy && sortDirection) {
-      const isDefaultCreatedDesc = sortBy === 'CreatedAt' && sortDirection === 'desc';
-      if (!isDefaultCreatedDesc) {
-        httpParams = httpParams.set('sortBy', sortBy);
-        httpParams = httpParams.set('sortDirection', sortDirection);
-      }
+      httpParams = httpParams.set('sortBy', sortBy);
+      httpParams = httpParams.set('sortDirection', sortDirection);
     }
     return this.http.get<PagedPatientsResult>(this.baseUrl, { params: httpParams });
   }

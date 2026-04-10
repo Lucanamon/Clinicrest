@@ -1,9 +1,7 @@
 namespace api.Domain.Entities;
 
-public class Appointment
+public class Appointment : AuditableEntity
 {
-    public Guid Id { get; set; }
-
     public Guid PatientId { get; set; }
 
     public Patient Patient { get; set; } = null!;
@@ -17,10 +15,4 @@ public class Appointment
     public required string Status { get; set; }
 
     public string? Notes { get; set; }
-
-    public DateTime CreatedAt { get; set; }
-
-    public bool IsDeleted { get; set; }
-
-    public DateTime? DeletedAt { get; set; }
 }

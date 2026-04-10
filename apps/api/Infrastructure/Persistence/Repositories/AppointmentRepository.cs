@@ -23,8 +23,7 @@ public class AppointmentRepository(ApplicationDbContext dbContext) : IAppointmen
             return false;
         }
 
-        appointment.IsDeleted = true;
-        appointment.DeletedAt = DateTime.UtcNow;
+        dbContext.Appointments.Remove(appointment);
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -38,7 +37,7 @@ public class AppointmentRepository(ApplicationDbContext dbContext) : IAppointmen
             .AsNoTracking()
             .Include(a => a.Patient)
             .Include(a => a.Doctor)
-            .Where(a => !a.IsDeleted && !a.Patient.IsDeleted);
+            .Where(a => !a.IsDeleted && !a.Patient.IsDeleted && !a.Doctor.IsDeleted);
 
         if (restrictToDoctorId.HasValue)
         {
@@ -96,7 +95,7 @@ public class AppointmentRepository(ApplicationDbContext dbContext) : IAppointmen
             .AsNoTracking()
             .Include(a => a.Patient)
             .Include(a => a.Doctor)
-            .Where(a => a.Id == id && !a.IsDeleted && !a.Patient.IsDeleted);
+            .Where(a => a.Id == id && !a.IsDeleted && !a.Patient.IsDeleted && !a.Doctor.IsDeleted);
 
         if (restrictToDoctorId.HasValue)
         {
@@ -111,7 +110,8 @@ public class AppointmentRepository(ApplicationDbContext dbContext) : IAppointmen
         Guid? restrictToDoctorId,
         CancellationToken cancellationToken = default)
     {
-        IQueryable<Appointment> query = dbContext.Appointments.Where(a => a.Id == id && !a.IsDeleted);
+        IQueryable<Appointment> query = dbContext.Appointments
+            .Where(a => a.Id == id && !a.IsDeleted && !a.Doctor.IsDeleted);
 
         if (restrictToDoctorId.HasValue)
         {
