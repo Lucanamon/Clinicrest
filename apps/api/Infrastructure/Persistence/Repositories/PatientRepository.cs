@@ -49,7 +49,25 @@ public class PatientRepository(ApplicationDbContext dbContext) : IPatientReposit
         if (!string.IsNullOrWhiteSpace(queryParams.Gender))
         {
             var gender = queryParams.Gender.Trim();
-            query = query.Where(p => EF.Functions.ILike(p.Gender, gender));
+            if (string.Equals(gender, "Male", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(p => EF.Functions.ILike(p.Gender, "Male"));
+            }
+            else if (string.Equals(gender, "Female", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(p => EF.Functions.ILike(p.Gender, "Female"));
+            }
+            else if (string.Equals(gender, "Other", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(p =>
+                    p.Gender != null &&
+                    !EF.Functions.ILike(p.Gender, "Male") &&
+                    !EF.Functions.ILike(p.Gender, "Female"));
+            }
+            else
+            {
+                query = query.Where(p => EF.Functions.ILike(p.Gender, gender));
+            }
         }
 
         if (queryParams.FromDateOfBirth.HasValue)
