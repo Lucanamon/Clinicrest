@@ -2,11 +2,11 @@
   display: block;
 }
 
-.form-shell {
+.detail-shell {
   color: #1d2533;
 }
 
-.form-header {
+.detail-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -14,26 +14,15 @@
   margin-bottom: 1.25rem;
 }
 
-.form-header h1 {
+.detail-header h1 {
   margin: 0;
   font-size: 1.7rem;
   font-weight: 700;
 }
 
-.form-header p {
+.sub {
   margin: 0.35rem 0 0;
   color: #6d778a;
-}
-
-.back-link {
-  color: #0284c7;
-  font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.back-link:hover {
-  text-decoration: underline;
 }
 
 .state-card {
@@ -47,6 +36,50 @@
 
 .state-card.error {
   color: #b42318;
+}
+
+.detail-card {
+  background: #fff;
+  border: 1px solid #e5e9f0;
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.detail-dl {
+  margin: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.detail-dl div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.detail-dl dt {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.detail-dl dd {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #1d2533;
+}
+
+.detail-actions {
+  margin-top: 1.5rem;
+}
+
+.card-footer {
+  margin-top: 1.25rem;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .patient-form {
@@ -85,6 +118,7 @@
   border-radius: 10px;
   padding: 0.55rem 0.65rem;
   font-size: 1rem;
+  font-family: inherit;
 }
 
 .field input:focus,
@@ -93,8 +127,9 @@
   border-color: #0284c7;
 }
 
-.field textarea {
-  font-family: inherit;
+.field input[readonly] {
+  background: #f8fafc;
+  color: #475569;
 }
 
 .field-error {
@@ -110,7 +145,8 @@
 }
 
 .btn-primary,
-.btn-secondary {
+.btn-secondary,
+.btn.btn-secondary {
   border-radius: 10px;
   padding: 0.55rem 1rem;
   font-weight: 600;
@@ -124,14 +160,19 @@
   color: #fff;
 }
 
-.btn-secondary {
+.btn-secondary,
+.btn.btn-secondary {
   border: 1px solid #dbe3ef;
   background: #fff;
   color: #334155;
 }
 
+.btn.btn-secondary:hover {
+  background: #f8fafc;
+}
+
 @media (max-width: 720px) {
-  .form-header {
+  .detail-header {
     flex-direction: column;
   }
 }

@@ -1,0 +1,58 @@
+<div class="card">
+  <h2>Patient Report Preview</h2>
+
+  <div class="toolbar">
+    <input [(ngModel)]="search" placeholder="Search name..." />
+
+    <select [(ngModel)]="sortBy">
+      <option value="name">Name</option>
+      <option value="createdAt">Created Date</option>
+    </select>
+
+    <select [(ngModel)]="sortDirection">
+      <option value="asc">Asc</option>
+      <option value="desc">Desc</option>
+    </select>
+
+    <button type="button" (click)="applyFilters()">Apply</button>
+    <button type="button" (click)="downloadExcel()">Download Excel</button>
+  </div>
+
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Age</th>
+          <th>Phone</th>
+          <th>Disease</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let p of data">
+          <td>{{ p.name }}</td>
+          <td>{{ p.age }}</td>
+          <td>{{ p.phone }}</td>
+          <td>{{ p.disease || '-' }}</td>
+          <td>{{ p.createdAt | date:'mediumDate' }}</td>
+        </tr>
+        <tr *ngIf="data.length === 0">
+          <td colspan="5">No patients found.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination">
+    <button type="button" (click)="previousPage()" [disabled]="pageNumber <= 1">Previous</button>
+    <span>Page {{ pageNumber }} | Total {{ totalCount }}</span>
+    <button
+      type="button"
+      (click)="nextPage()"
+      [disabled]="pageNumber * pageSize >= totalCount">
+      Next
+    </button>
+  </div>
+</div>

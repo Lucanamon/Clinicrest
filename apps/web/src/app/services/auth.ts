@@ -25,6 +25,7 @@ export interface LoginResponse {
 })
 export class AuthService {
   private readonly authenticated = new BehaviorSubject<boolean>(false);
+  private currentUser: Record<string, unknown> | null = null;
 
   /** Emits when login state changes; on the client, matches persisted token presence. */
   readonly authState$ = this.authenticated.asObservable();
@@ -55,11 +56,70 @@ export class AuthService {
     this.removeStorageItem(USERNAME_KEY);
     this.removeStorageItem(ROLE_KEY);
     this.removeStorageItem(USER_ID_KEY);
+    this.currentUser = null;
     this.authenticated.next(false);
   }
 
   getToken(): string | null {
     return this.getStorageItem(TOKEN_KEY);
+  }
+
+  initAuth(): void {
+    this.restoreSession();
+  }
+
+  /**
+   * Rehydrates auth state from persisted token after full page reloads.
+   * Returns true when a valid token exists and user state is restored.
+   */
+  restoreSession(): boolean {
+    const token = this.getToken();
+    if (!token) {
+      this.currentUser = null;
+      this.authenticated.next(false);
+      return false;
+    }
+
+    return this.setUserFromToken(token);
+  }
+
+  /**
+   * Persists token-derived user state and marks the user as authenticated.
+   * Invalid/expired tokens are cleared and treated as unauthenticated.
+   */
+  setUserFromToken(token: string): boolean {
+    if (!this.isPlatformBrowser() || !this.isTokenValid(token)) {
+      this.logout();
+      return false;
+    }
+
+    const claims = this.decodeJwtPayload(token);
+    this.currentUser = claims;
+    const username = this.readClaim(claims, ['username', 'unique_name', 'name']);
+    const role = this.readClaim(claims, [
+      'role',
+      'roles',
+      'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
+    ]);
+    const userId = this.readClaim(claims, [
+      'userId',
+      'sub',
+      'nameid',
+      'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'
+    ]);
+
+    this.setStorageItem(TOKEN_KEY, token);
+    if (username) {
+      this.setStorageItem(USERNAME_KEY, username);
+    }
+    if (role) {
+      this.setStorageItem(ROLE_KEY, role);
+    }
+    if (userId) {
+      this.setStorageItem(USER_ID_KEY, userId);
+    }
+    this.authenticated.next(true);
+    return true;
   }
 
   getUsername(): string {
@@ -68,6 +128,15 @@ export class AuthService {
 
   isAuthenticated(): boolean {
     return !!this.getToken();
+  }
+
+  isLoggedIn(): boolean {
+    const token = this.getToken();
+    return !!token && this.isTokenValid(token);
+  }
+
+  getUser(): Record<string, unknown> | null {
+    return this.currentUser;
   }
 
   getRole(): string | null {
@@ -122,5 +191,61 @@ export class AuthService {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem(key);
     }
+  }
+
+  private isPlatformBrowser(): boolean {
+    return isPlatformBrowser(this.platformId);
+  }
+
+  private isTokenValid(token: string): boolean {
+    const claims = this.decodeJwtPayload(token);
+    if (!claims) {
+      return false;
+    }
+
+    const expRaw = claims['exp'];
+    if (typeof expRaw === 'number') {
+      return expRaw * 1000 > Date.now();
+    }
+
+    if (typeof expRaw === 'string' && expRaw.trim() !== '') {
+      const exp = Number(expRaw);
+      return Number.isFinite(exp) && exp * 1000 > Date.now();
+    }
+
+    return true;
+  }
+
+  private decodeJwtPayload(token: string): Record<string, unknown> | null {
+    try {
+      const parts = token.split('.');
+      if (parts.length < 2) {
+        return null;
+      }
+
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+      const decoded = atob(padded);
+      return JSON.parse(decoded) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+
+  private readClaim(claims: Record<string, unknown> | null, keys: string[]): string | null {
+    if (!claims) {
+      return null;
+    }
+
+    for (const key of keys) {
+      const value = claims[key];
+      if (typeof value === 'string' && value.trim() !== '') {
+        return value;
+      }
+      if (Array.isArray(value) && typeof value[0] === 'string') {
+        return value[0];
+      }
+    }
+    return null;
   }
 }

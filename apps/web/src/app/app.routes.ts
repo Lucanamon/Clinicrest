@@ -1,11 +1,11 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
-import { rootAdminGuard } from './guards/root-admin.guard';
 import { AppointmentFormComponent } from './appointment/components/appointment-form/appointment-form.component';
 import { AppointmentListComponent } from './appointment/components/appointment-list/appointment-list.component';
 import { BacklogFormComponent } from './backlog/components/backlog-form/backlog-form.component';
 import { BacklogListComponent } from './backlog/components/backlog-list/backlog-list.component';
 import { DashboardLayoutComponent } from './layout/dashboard-layout.component';
+import { PatientDetailComponent } from './patient/components/patient-detail/patient-detail.component';
 import { PatientFormComponent } from './patient/components/patient-form/patient-form.component';
 import { PatientListComponent } from './patient/components/patient-list/patient-list.component';
 import { AppointmentsPage } from './pages/appointments/appointments.page';
@@ -14,6 +14,7 @@ import { LoginPage } from './pages/login/login.page';
 import { PatientsPage } from './pages/patients/patients.page';
 import { AuditLogPage } from './pages/audit-log/audit-log.page';
 import { UsersPage } from './pages/users/users.page';
+import { PatientsReportComponent } from './pages/patients/patients-report/patients-report.component';
 import { UserFormComponent } from './users/components/user-form/user-form.component';
 import { UserListComponent } from './users/components/user-list/user-list.component';
 
@@ -31,8 +32,8 @@ export const routes: Routes = [
         children: [
           { path: '', component: PatientListComponent },
           { path: 'new', component: PatientFormComponent },
-          { path: ':id/edit', component: PatientFormComponent },
-          { path: ':id', component: PatientFormComponent }
+          { path: 'report', component: PatientsReportComponent, canActivate: [authGuard] },
+          { path: ':id', component: PatientDetailComponent }
         ]
       },
       {
@@ -58,7 +59,7 @@ export const routes: Routes = [
       {
         path: 'users',
         component: UsersPage,
-        canActivate: [rootAdminGuard],
+        canActivate: [authGuard],
         children: [
           { path: '', component: UserListComponent },
           { path: 'new', component: UserFormComponent }
@@ -67,9 +68,9 @@ export const routes: Routes = [
       {
         path: 'audit-logs',
         component: AuditLogPage,
-        canActivate: [rootAdminGuard]
+        canActivate: [authGuard]
       }
     ]
   },
-  { path: '**', redirectTo: '' }
+  { path: '**', redirectTo: '/login' }
 ];

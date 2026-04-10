@@ -78,6 +78,39 @@ public class PatientRepository(ApplicationDbContext dbContext) : IPatientReposit
         return (items, totalCount);
     }
 
+    public async Task<IReadOnlyList<Patient>> GetForExportAsync(
+        PatientExportRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        IQueryable<Patient> query = dbContext.Patients.AsNoTracking().Where(p => !p.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            var term = SanitizeLikeTerm(request.Name);
+            if (term.Length > 0)
+            {
+                var pattern = $"%{term}%";
+                query = query.Where(p =>
+                    EF.Functions.ILike(p.FirstName, pattern) ||
+                    EF.Functions.ILike(p.LastName, pattern));
+            }
+        }
+
+        query = ApplyExportOrdering(query, request.SortBy);
+        return await query.ToListAsync(cancellationToken);
+    }
+
+    public async Task<(int TotalPatients, int ActivePatients, int DeletedPatients)> GetSummaryCountsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var totalPatients = await dbContext.Patients.AsNoTracking().CountAsync(cancellationToken);
+        var deletedPatients = await dbContext.Patients.AsNoTracking()
+            .CountAsync(p => p.IsDeleted, cancellationToken);
+        var activePatients = totalPatients - deletedPatients;
+
+        return (totalPatients, activePatients, deletedPatients);
+    }
+
     public async Task<Patient?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await dbContext.Patients.FirstOrDefaultAsync(
@@ -114,6 +147,21 @@ public class PatientRepository(ApplicationDbContext dbContext) : IPatientReposit
         }
 
         return queryable.OrderByDescending(x => x.CreatedAt);
+    }
+
+    private static IQueryable<Patient> ApplyExportOrdering(IQueryable<Patient> queryable, string? sortBy)
+    {
+        if (string.Equals(sortBy?.Trim(), "name", StringComparison.OrdinalIgnoreCase))
+        {
+            return queryable.OrderBy(x => x.FirstName).ThenBy(x => x.LastName);
+        }
+
+        if (string.Equals(sortBy?.Trim(), "createdAt", StringComparison.OrdinalIgnoreCase))
+        {
+            return queryable.OrderByDescending(x => x.CreatedAt);
+        }
+
+        return queryable.OrderBy(x => x.FirstName).ThenBy(x => x.LastName);
     }
 
     /// <summary>

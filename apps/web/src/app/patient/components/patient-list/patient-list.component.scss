@@ -214,6 +214,14 @@ tbody tr:hover {
   text-decoration: none;
 }
 
+button.link-btn {
+  font: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 0.25rem 0.35rem;
+}
+
 .link-btn:hover {
   text-decoration: underline;
 }

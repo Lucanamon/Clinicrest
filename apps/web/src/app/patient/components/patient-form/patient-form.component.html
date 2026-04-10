@@ -1,68 +1,74 @@
 <div class="form-shell">
   <header class="form-header">
     <div>
-      <h1>{{ isEdit() ? 'Edit patient' : 'New patient' }}</h1>
-      <p>{{ isEdit() ? 'Update demographics and contact details.' : 'Add a new patient record.' }}</p>
+      <h1>New patient</h1>
+      <p>Add a new patient record.</p>
     </div>
     <a routerLink="/patients" class="back-link">← Back to list</a>
   </header>
 
-  @if (loading()) {
-    <section class="state-card">Loading…</section>
-  } @else if (loadError()) {
-    <section class="state-card error">{{ loadError() }}</section>
-  } @else {
-    @if (saveError()) {
-      <section class="state-card error">{{ saveError() }}</section>
-    }
-
-    <form class="patient-form" [formGroup]="form" (ngSubmit)="submit()">
-      <div class="field-grid">
-        <label class="field">
-          <span>First name *</span>
-          <input type="text" formControlName="firstName" autocomplete="given-name" />
-          @if (form.controls.firstName.touched && form.controls.firstName.invalid) {
-            <span class="field-error">Required</span>
-          }
-        </label>
-
-        <label class="field">
-          <span>Last name *</span>
-          <input type="text" formControlName="lastName" autocomplete="family-name" />
-          @if (form.controls.lastName.touched && form.controls.lastName.invalid) {
-            <span class="field-error">Required</span>
-          }
-        </label>
-
-        <label class="field">
-          <span>Date of birth *</span>
-          <input type="date" formControlName="dateOfBirth" />
-          @if (form.controls.dateOfBirth.touched && form.controls.dateOfBirth.invalid) {
-            <span class="field-error">Required</span>
-          }
-        </label>
-
-        <label class="field">
-          <span>Gender *</span>
-          <input type="text" formControlName="gender" autocomplete="sex" placeholder="e.g. Female" />
-          @if (form.controls.gender.touched && form.controls.gender.invalid) {
-            <span class="field-error">Required</span>
-          }
-        </label>
-
-        <label class="field field-span">
-          <span>Phone number *</span>
-          <input type="tel" formControlName="phoneNumber" autocomplete="tel" />
-          @if (form.controls.phoneNumber.touched && form.controls.phoneNumber.invalid) {
-            <span class="field-error">Required</span>
-          }
-        </label>
-      </div>
-
-      <div class="form-actions">
-        <button type="button" class="btn-secondary" (click)="cancel()">Cancel</button>
-        <button type="submit" class="btn-primary">{{ isEdit() ? 'Save changes' : 'Create patient' }}</button>
-      </div>
-    </form>
+  @if (saveError()) {
+    <section class="state-card error">{{ saveError() }}</section>
   }
+
+  <form class="patient-form" [formGroup]="form" (ngSubmit)="submit()">
+    <div class="field-grid">
+      <label class="field">
+        <span>First name *</span>
+        <input type="text" formControlName="firstName" autocomplete="given-name" />
+        @if (form.controls.firstName.touched && form.controls.firstName.invalid) {
+          <span class="field-error">Required</span>
+        }
+      </label>
+
+      <label class="field">
+        <span>Last name *</span>
+        <input type="text" formControlName="lastName" autocomplete="family-name" />
+        @if (form.controls.lastName.touched && form.controls.lastName.invalid) {
+          <span class="field-error">Required</span>
+        }
+      </label>
+
+      <label class="field">
+        <span>Date of birth *</span>
+        <input type="date" formControlName="dateOfBirth" />
+        @if (form.controls.dateOfBirth.touched && form.controls.dateOfBirth.invalid) {
+          <span class="field-error">Required</span>
+        }
+      </label>
+
+      <label class="field">
+        <span>Gender *</span>
+        <input type="text" formControlName="gender" autocomplete="sex" placeholder="e.g. Female" />
+        @if (form.controls.gender.touched && form.controls.gender.invalid) {
+          <span class="field-error">Required</span>
+        }
+      </label>
+
+      <label class="field field-span">
+        <span>Phone number *</span>
+        <input type="tel" formControlName="phoneNumber" autocomplete="tel" />
+        @if (form.controls.phoneNumber.touched && form.controls.phoneNumber.invalid) {
+          <span class="field-error">Required</span>
+        }
+      </label>
+
+      <label class="field field-span">
+        <span>Underlying disease</span>
+        <textarea
+          formControlName="underlyingDisease"
+          rows="3"
+          placeholder="Optional"
+        ></textarea>
+        @if (form.controls.underlyingDisease.touched && form.controls.underlyingDisease.invalid) {
+          <span class="field-error">Max 1000 characters</span>
+        }
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cancel()">Cancel</button>
+      <button type="submit" class="btn-primary">Create patient</button>
+    </div>
+  </form>
 </div>

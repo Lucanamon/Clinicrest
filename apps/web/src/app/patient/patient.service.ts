@@ -9,6 +9,8 @@ export interface PatientDto {
   dateOfBirth: string;
   gender: string;
   phoneNumber: string;
+  underlyingDisease?: string | null;
+  age: number;
   createdAt: string;
 }
 
@@ -18,9 +20,17 @@ export interface CreatePatientRequest {
   dateOfBirth: string;
   gender: string;
   phoneNumber: string;
+  underlyingDisease?: string | null;
 }
 
-export type UpdatePatientRequest = CreatePatientRequest;
+export interface UpdatePatientRequest {
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: string;
+  phoneNumber: string;
+  underlyingDisease?: string | null;
+}
 
 export interface PagedResult<T> {
   items: T[];

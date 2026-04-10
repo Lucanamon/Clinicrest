@@ -22,4 +22,7 @@ public class UpdatePatientRequest
     [Required]
     [MaxLength(32)]
     public string PhoneNumber { get; set; } = string.Empty;
+
+    [MaxLength(1000)]
+    public string? UnderlyingDisease { get; set; }
 }

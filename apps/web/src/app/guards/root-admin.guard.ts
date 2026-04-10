@@ -13,5 +13,11 @@ export const rootAdminGuard: CanActivateFn = () => {
     return true;
   }
 
+  auth.restoreSession();
+
+  if (!auth.isLoggedIn()) {
+    return router.createUrlTree(['/login']);
+  }
+
   return auth.isRootAdmin() ? true : router.createUrlTree(['/patients']);
 };

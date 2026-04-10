@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Subject, Subscription, debounceTime } from 'rxjs';
 import { PatientDto, PatientService } from '../../patient.service';
@@ -27,6 +27,7 @@ import { toggleSort } from '../../../shared/sorting/toggle-sort';
 })
 export class PatientListComponent implements OnInit, OnDestroy {
   private readonly patientService = inject(PatientService);
+  private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
   readonly auth = inject(AuthService);
 
@@ -117,6 +118,14 @@ export class PatientListComponent implements OnInit, OnDestroy {
     this.toDateOfBirth.set(value);
     this.page.set(1);
     this.loadPatients();
+  }
+
+  goToDetail(id: string): void {
+    void this.router.navigate(['/patients', id]);
+  }
+
+  goToReport(): void {
+    void this.router.navigate(['/patients/report']);
   }
 
   goToPage(nextPage: number): void {

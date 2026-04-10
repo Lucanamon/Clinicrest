@@ -57,6 +57,9 @@ public class ApplicationDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(32);
 
+            entity.Property(p => p.UnderlyingDisease)
+                .HasMaxLength(1000);
+
             entity.Property(p => p.CreatedAt)
                 .IsRequired()
                 .HasDefaultValueSql("NOW()");

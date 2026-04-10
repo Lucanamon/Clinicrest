@@ -14,5 +14,9 @@ public class PatientDto
 
     public string PhoneNumber { get; set; } = string.Empty;
 
+    public string? UnderlyingDisease { get; set; }
+
+    public int Age { get; set; }
+
     public DateTime CreatedAt { get; set; }
 }

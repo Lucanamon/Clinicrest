@@ -3,6 +3,7 @@ using api.Application.Patients;
 using api.Domain;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
 
 namespace api.Controllers;
 
@@ -85,7 +86,7 @@ public class PatientsController(IPatientService patientService) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = Roles.ClinicalAll)]
+    [Authorize(Roles = Roles.RootAdmin)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await patientService.DeleteAsync(id, cancellationToken);
@@ -95,5 +96,56 @@ public class PatientsController(IPatientService patientService) : ControllerBase
         }
 
         return NoContent();
+    }
+
+    [HttpPost("export")]
+    [Authorize(Roles = Roles.ClinicalAll)]
+    public async Task<IActionResult> ExportPatients(
+        [FromBody] PatientExportRequest? filter,
+        CancellationToken cancellationToken)
+    {
+        var export = await patientService.ExportAsync(filter ?? new PatientExportRequest(), cancellationToken);
+        var reportsDir = Path.Combine("wwwroot", "reports");
+        Directory.CreateDirectory(reportsDir);
+
+        var filePath = Path.Combine(reportsDir, export.FileName);
+        await System.IO.File.WriteAllBytesAsync(filePath, export.Content, cancellationToken);
+
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var downloadUrl = $"{baseUrl}/reports/{export.FileName}";
+        var encodedDownloadUrl = WebUtility.UrlEncode(downloadUrl);
+        var viewUrl = $"https://view.officeapps.live.com/op/view.aspx?src={encodedDownloadUrl}";
+
+        return Ok(new
+        {
+            downloadUrl,
+            viewUrl,
+            googleSheetUrl = export.GoogleSheetUrl
+        });
+    }
+
+    [HttpGet("preview")]
+    [Authorize(Roles = Roles.ClinicalAll)]
+    public async Task<ActionResult<PagedResult<PatientPreviewItemDto>>> PreviewPatients(
+        [FromQuery] PatientQueryParams query,
+        CancellationToken cancellationToken)
+    {
+        if (query.PageNumber < 1)
+        {
+            query.PageNumber = 1;
+        }
+
+        if (query.PageSize < 1)
+        {
+            query.PageSize = 10;
+        }
+
+        if (query.PageSize > 100)
+        {
+            query.PageSize = 100;
+        }
+
+        var result = await patientService.GetPreviewAsync(query, cancellationToken);
+        return Ok(result);
     }
 }
