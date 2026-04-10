@@ -13,6 +13,20 @@ public class UserRepository(ApplicationDbContext dbContext) : IUserRepository
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
     }
 
+    public async Task<User?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default)
+    {
+        var normalized = username.Trim();
+        return await dbContext.Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Username == normalized && !u.IsDeleted, cancellationToken);
+    }
+
+    public async Task<User?> GetByUsernameForUpdateAsync(string username, CancellationToken cancellationToken = default)
+    {
+        var normalized = username.Trim();
+        return await dbContext.Users
+            .FirstOrDefaultAsync(u => u.Username == normalized && !u.IsDeleted, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<User>> GetDoctorsAsync(CancellationToken cancellationToken = default)
     {
         return await dbContext.Users.AsNoTracking()
@@ -39,6 +53,12 @@ public class UserRepository(ApplicationDbContext dbContext) : IUserRepository
     public async Task AddAsync(User user, CancellationToken cancellationToken = default)
     {
         dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateAsync(User user, CancellationToken cancellationToken = default)
+    {
+        dbContext.Users.Update(user);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 

@@ -1,0 +1,18 @@
+<aside class="right-sidebar">
+  <h3>Users</h3>
+
+  <button type="button" class="user-item" *ngFor="let u of sortedUsers" (click)="openProfile()">
+    <div class="avatar-wrap">
+      <img [src]="u.profileImageUrl || defaultAvatar" (error)="onImageError($event)" alt="User avatar" />
+      <span class="active-dot" [class.on]="isActiveNow(u.lastActiveAt)" aria-hidden="true"></span>
+    </div>
+
+    <div class="meta">
+      <div class="display-name">{{ u.displayName || u.username }}</div>
+      <small class="role" [ngClass]="getRoleClass(u.role)">{{ getRoleLabel(u.role) }}</small>
+      <small class="last-active">{{ getLastActive(u.lastActiveAt) }}</small>
+    </div>
+  </button>
+
+  <p class="empty-state" *ngIf="sortedUsers.length === 0">No users found.</p>
+</aside>

@@ -16,6 +16,7 @@
       <table class="data-table">
         <thead>
           <tr>
+            <th scope="col">Avatar</th>
             <th scope="col">Username</th>
             <th scope="col">Role</th>
             <th scope="col">Created</th>
@@ -24,6 +25,16 @@
         </thead>
         <tbody>
           <tr *ngFor="let row of users()">
+            <td>
+              <img
+                [src]="row.profileImageUrl || defaultAvatar"
+                (error)="onImageError($event)"
+                width="40"
+                height="40"
+                alt="User avatar"
+                style="border-radius: 50%; object-fit: cover;"
+              />
+            </td>
             <td>{{ row.username }}</td>
             <td>{{ row.role }}</td>
             <td>{{ formatDate(row.createdAt) }}</td>
@@ -35,7 +46,7 @@
           </tr>
           @if (users().length === 0) {
             <tr>
-              <td colspan="4" class="empty-state">No users found.</td>
+              <td colspan="5" class="empty-state">No users found.</td>
             </tr>
           }
         </tbody>

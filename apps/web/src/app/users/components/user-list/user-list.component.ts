@@ -12,6 +12,7 @@ import { UserDto, UsersService } from '../../users.service';
 })
 export class UserListComponent implements OnInit {
   private readonly usersService = inject(UsersService);
+  readonly defaultAvatar = 'https://ui-avatars.com/api/?name=User';
 
   readonly users = signal<UserDto[]>([]);
   readonly loading = signal(true);
@@ -60,5 +61,12 @@ export class UserListComponent implements OnInit {
 
   canDelete(row: UserDto): boolean {
     return row.role !== 'RootAdmin';
+  }
+
+  onImageError(event: Event): void {
+    const target = event.target as HTMLImageElement | null;
+    if (target) {
+      target.src = this.defaultAvatar;
+    }
   }
 }

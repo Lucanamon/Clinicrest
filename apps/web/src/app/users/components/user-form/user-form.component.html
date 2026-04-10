@@ -37,6 +37,27 @@
           }
         </select>
       </label>
+
+      <label class="field field-span">
+        <span>Profile Image URL</span>
+        <input
+          type="text"
+          formControlName="profileImageUrl"
+          placeholder="https://example.com/image.jpg"
+        />
+      </label>
+
+      <div class="field field-span">
+        <span>Preview</span>
+        <img
+          [src]="form.controls.profileImageUrl.value || defaultAvatar"
+          (error)="onImageError($event)"
+          width="100"
+          height="100"
+          alt="Profile preview"
+          style="border-radius: 50%; object-fit: cover;"
+        />
+      </div>
     </div>
 
     <div class="form-actions">

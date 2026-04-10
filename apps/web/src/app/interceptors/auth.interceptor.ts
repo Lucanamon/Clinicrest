@@ -8,9 +8,15 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const router = inject(Router);
   const token = auth.getToken();
+  const username = auth.getUsername();
 
   const authReq = token
-    ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
+    ? req.clone({
+        setHeaders: {
+          Authorization: `Bearer ${token}`,
+          ...(username ? { 'X-Username': username } : {})
+        }
+      })
     : req;
 
   return next(authReq).pipe(

@@ -33,14 +33,27 @@
     <header class="topbar">
       <app-global-search />
 
-      <button class="user-pill" type="button" (click)="logout()">
-        <span class="avatar">DR</span>
-        <span class="name">{{ username }}</span>
-      </button>
+      <div class="topbar-actions">
+        <button class="user-pill" type="button" (click)="goToProfile()">
+          <img
+            class="avatar-image"
+            [src]="profileImageUrl || defaultAvatar"
+            (error)="onImageError($event)"
+            width="35"
+            height="35"
+            alt="User avatar"
+          />
+          <span class="name">{{ displayName }}</span>
+        </button>
+
+        <button class="logout-btn" type="button" (click)="logout()">Logout</button>
+      </div>
     </header>
 
     <main class="content">
       <router-outlet />
     </main>
   </div>
+
+  <app-right-sidebar />
 </div>

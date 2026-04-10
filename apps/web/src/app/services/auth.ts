@@ -1,7 +1,8 @@
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { BehaviorSubject, Observable, of, tap } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 const TOKEN_KEY = 'clinicrest.token';
 const USERNAME_KEY = 'clinicrest.username';
@@ -20,15 +21,27 @@ export interface LoginResponse {
   userId: string;
 }
 
+export interface CurrentUserProfile {
+  id: string;
+  username: string;
+  displayName?: string | null;
+  role: string;
+  profileImageUrl?: string | null;
+  lastActiveAt: string;
+  createdAt: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
   private readonly authenticated = new BehaviorSubject<boolean>(false);
+  private readonly currentUserProfileSubject = new BehaviorSubject<CurrentUserProfile | null>(null);
   private currentUser: Record<string, unknown> | null = null;
 
   /** Emits when login state changes; on the client, matches persisted token presence. */
   readonly authState$ = this.authenticated.asObservable();
+  readonly currentUserProfile$ = this.currentUserProfileSubject.asObservable();
 
   constructor(
     private readonly http: HttpClient,
@@ -57,6 +70,7 @@ export class AuthService {
     this.removeStorageItem(ROLE_KEY);
     this.removeStorageItem(USER_ID_KEY);
     this.currentUser = null;
+    this.currentUserProfileSubject.next(null);
     this.authenticated.next(false);
   }
 
@@ -124,6 +138,37 @@ export class AuthService {
 
   getUsername(): string {
     return this.getStorageItem(USERNAME_KEY) ?? 'User';
+  }
+
+  getCurrentUserProfile(): CurrentUserProfile | null {
+    return this.currentUserProfileSubject.value;
+  }
+
+  loadCurrentUserProfile(): Observable<CurrentUserProfile | null> {
+    if (!this.getToken()) {
+      this.currentUserProfileSubject.next(null);
+      return of(null);
+    }
+
+    return this.http.get<CurrentUserProfile>('/api/users/me').pipe(
+      tap((profile) => {
+        this.currentUserProfileSubject.next(profile);
+        if (profile.username) {
+          this.setStorageItem(USERNAME_KEY, profile.username);
+        }
+      }),
+      catchError(() => {
+        this.currentUserProfileSubject.next(null);
+        return of(null);
+      })
+    );
+  }
+
+  setCurrentUserProfile(profile: CurrentUserProfile): void {
+    this.currentUserProfileSubject.next(profile);
+    if (profile.username) {
+      this.setStorageItem(USERNAME_KEY, profile.username);
+    }
   }
 
   isAuthenticated(): boolean {

@@ -1,0 +1,47 @@
+<main class="profile-shell">
+  <header class="profile-header">
+    <div>
+      <h1>My Profile</h1>
+      <p>Update your display name and avatar URL.</p>
+    </div>
+    <a routerLink="/patients" class="back-link">Back</a>
+  </header>
+
+  @if (loading()) {
+    <section class="state-card">Loading profile...</section>
+  } @else {
+    @if (saveError()) {
+      <section class="state-card error">{{ saveError() }}</section>
+    }
+    @if (success()) {
+      <section class="state-card success">{{ success() }}</section>
+    }
+
+    <form class="profile-form" [formGroup]="form" (ngSubmit)="save()">
+      <label class="field">
+        <span>Display Name</span>
+        <input type="text" formControlName="displayName" placeholder="Your preferred name" />
+      </label>
+
+      <label class="field">
+        <span>Profile Image URL</span>
+        <input type="text" formControlName="profileImageUrl" placeholder="https://example.com/image.jpg" />
+      </label>
+
+      <div class="preview">
+        <span>Preview</span>
+        <img
+          [src]="form.controls.profileImageUrl.value || defaultAvatar"
+          (error)="onImageError($event)"
+          width="120"
+          height="120"
+          alt="Profile preview"
+        />
+      </div>
+
+      <button type="submit" [disabled]="saving()">
+        {{ saving() ? 'Saving...' : 'Save' }}
+      </button>
+    </form>
+  }
+</main>

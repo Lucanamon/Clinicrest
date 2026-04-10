@@ -93,6 +93,17 @@ public class ApplicationDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(32);
 
+            entity.Property(u => u.DisplayName)
+                .HasMaxLength(120);
+
+            entity.Property(u => u.ProfileImageUrl)
+                .HasMaxLength(2048);
+
+            entity.Property(u => u.LastActiveAt)
+                .IsRequired()
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("NOW()");
+
             entity.Property(u => u.CreatedAt)
                 .IsRequired()
                 .HasDefaultValueSql("NOW()");

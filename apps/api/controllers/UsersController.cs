@@ -1,6 +1,7 @@
 using api.Application.Abstractions;
 using api.Application.Users;
 using api.Domain;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,8 +10,73 @@ namespace api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class UsersController(IUserService userService, IUserRepository userRepository) : ControllerBase
+public class UsersController(
+    IUserService userService,
+    IUserRepository userRepository,
+    ILogger<UsersController> logger) : ControllerBase
 {
+    [HttpGet("me")]
+    public async Task<ActionResult<UserDto>> GetMe(CancellationToken cancellationToken = default)
+    {
+        var username = User.Identity?.Name ?? User.FindFirstValue(ClaimTypes.Name);
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return Unauthorized(new { message = "Authenticated username is missing." });
+        }
+
+        var user = await userService.GetByUsernameAsync(username, cancellationToken);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(user);
+    }
+
+    [HttpPut("me")]
+    public async Task<ActionResult<UserDto>> UpdateMyProfile(
+        [FromBody] UpdateProfileDto request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        }
+
+        var headerUsername = HttpContext.Request.Headers["X-Username"].ToString();
+        var username = !string.IsNullOrWhiteSpace(headerUsername)
+            ? headerUsername
+            : (User.Identity?.Name ?? User.FindFirstValue(ClaimTypes.Name));
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return BadRequest(new { message = "Missing username. Provide JWT identity or X-Username header." });
+        }
+
+        try
+        {
+            var updated = await userService.UpdateProfileAsync(username, request, cancellationToken);
+            if (updated is null)
+            {
+                return NotFound();
+            }
+
+            return Ok(updated);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to update profile for username {Username}", username);
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "Unexpected server error while updating profile.",
+                traceId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
     [HttpGet("doctors")]
     [Authorize(Roles = Roles.ClinicalAll)]
     public async Task<ActionResult<IReadOnlyList<DoctorListItemDto>>> GetDoctors(CancellationToken cancellationToken = default)
@@ -21,7 +87,7 @@ public class UsersController(IUserService userService, IUserRepository userRepos
     }
 
     [HttpGet]
-    [Authorize(Roles = Roles.RootAdmin)]
+    [Authorize(Roles = Roles.ClinicalAll)]
     public async Task<ActionResult<IReadOnlyList<UserDto>>> GetUsers(CancellationToken cancellationToken = default)
     {
         var users = await userService.GetAllAsync(cancellationToken);

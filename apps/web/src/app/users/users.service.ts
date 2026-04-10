@@ -10,7 +10,10 @@ export interface DoctorListItemDto {
 export interface UserDto {
   id: string;
   username: string;
+  displayName?: string | null;
   role: string;
+  profileImageUrl?: string | null;
+  lastActiveAt: string;
   createdAt: string;
 }
 
@@ -18,6 +21,12 @@ export interface CreateUserRequest {
   username: string;
   password: string;
   role: string;
+  profileImageUrl?: string | null;
+}
+
+export interface UpdateProfileRequest {
+  displayName?: string | null;
+  profileImageUrl?: string | null;
 }
 
 @Injectable({
@@ -33,6 +42,14 @@ export class UsersService {
 
   getUsers(): Observable<UserDto[]> {
     return this.http.get<UserDto[]>(this.baseUrl);
+  }
+
+  getMyProfile(): Observable<UserDto> {
+    return this.http.get<UserDto>(`${this.baseUrl}/me`);
+  }
+
+  updateMyProfile(request: UpdateProfileRequest): Observable<UserDto> {
+    return this.http.put<UserDto>(`${this.baseUrl}/me`, request);
   }
 
   createUser(request: CreateUserRequest): Observable<UserDto> {

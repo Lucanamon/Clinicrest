@@ -15,6 +15,7 @@ import { PatientsPage } from './pages/patients/patients.page';
 import { AuditLogPage } from './pages/audit-log/audit-log.page';
 import { UsersPage } from './pages/users/users.page';
 import { PatientsReportComponent } from './pages/patients/patients-report/patients-report.component';
+import { ProfileComponent } from './profile/profile.component';
 import { UserFormComponent } from './users/components/user-form/user-form.component';
 import { UserListComponent } from './users/components/user-list/user-list.component';
 
@@ -64,6 +65,11 @@ export const routes: Routes = [
           { path: '', component: UserListComponent },
           { path: 'new', component: UserFormComponent }
         ]
+      },
+      {
+        path: 'profile',
+        component: ProfileComponent,
+        canActivate: [authGuard]
       },
       {
         path: 'audit-logs',

@@ -12,6 +12,9 @@ export class App implements OnInit {
   private readonly auth = inject(AuthService);
 
   ngOnInit(): void {
-    this.auth.restoreSession();
+    const restored = this.auth.restoreSession();
+    if (restored) {
+      this.auth.loadCurrentUserProfile().subscribe();
+    }
   }
 }

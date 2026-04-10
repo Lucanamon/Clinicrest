@@ -1,0 +1,121 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.right-sidebar {
+  border-left: 1px solid #e6ebf3;
+  background: rgba(226, 225, 241, 0.75);
+  color: #000;
+  height: 100%;
+  padding: 0.75rem;
+  overflow-y: auto;
+}
+
+h3 {
+  margin: 0 0 0.8rem;
+  font-size: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(226, 225, 241, 0.9);
+  padding: 0.25rem 0;
+}
+
+.user-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
+  padding: 0.45rem;
+  border: 0;
+  border-radius: 10px;
+  text-align: left;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.user-item:hover {
+  background: rgba(199, 196, 223, 0.72);
+}
+
+.avatar-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.user-item img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.active-dot {
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 2px solid #eeeeee;
+  background: #6b7280;
+}
+
+.active-dot.on {
+  background: #22c55e;
+}
+
+.meta {
+  min-width: 0;
+}
+
+.display-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.role,
+.last-active {
+  display: block;
+  color: #000;
+}
+
+.role {
+  font-size: 0.72rem;
+  width: fit-content;
+  margin: 0.1rem 0;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.role-rootadmin {
+  background: #fee2e2;
+}
+
+.role-administrator {
+  background: #dbeafe;
+}
+
+.role-doctor {
+  background: #dcfce7;
+}
+
+.role-nurse {
+  background: #f3e8ff;
+}
+
+.last-active {
+  font-size: 0.78rem;
+}
+
+.empty-state {
+  margin: 1rem 0;
+  font-size: 0.85rem;
+  color: rgba(0, 0, 0, 0.7);
+}

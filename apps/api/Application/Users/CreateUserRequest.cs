@@ -17,4 +17,7 @@ public class CreateUserRequest
     [Required]
     [MaxLength(32)]
     public string Role { get; set; } = string.Empty;
+
+    [MaxLength(2048)]
+    public string? ProfileImageUrl { get; set; }
 }

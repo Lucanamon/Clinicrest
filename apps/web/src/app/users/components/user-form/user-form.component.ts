@@ -21,13 +21,15 @@ export class UserFormComponent {
 
   readonly saving = signal(false);
   readonly saveError = signal<string | null>(null);
+  readonly defaultAvatar = 'https://ui-avatars.com/api/?name=User';
 
   readonly roleOptions = ['Doctor', 'Nurse', 'Administrator'] as const;
 
   readonly form = this.fb.nonNullable.group({
     username: ['', [Validators.required, Validators.maxLength(100)]],
     password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(256)]],
-    role: ['Doctor', [Validators.required]]
+    role: ['Doctor', [Validators.required]],
+    profileImageUrl: ['', [Validators.maxLength(2048)]]
   });
 
   submit(): void {
@@ -39,11 +41,20 @@ export class UserFormComponent {
     this.saveError.set(null);
     this.saving.set(true);
     const v = this.form.getRawValue();
+    const profileImageUrl = v.profileImageUrl.trim();
+
+    if (profileImageUrl && !profileImageUrl.startsWith('http')) {
+      this.saving.set(false);
+      this.saveError.set('Invalid image URL. It should start with http or https.');
+      return;
+    }
+
     this.usersService
       .createUser({
         username: v.username.trim(),
         password: v.password,
-        role: v.role
+        role: v.role,
+        profileImageUrl: profileImageUrl || null
       })
       .subscribe({
         next: () => {
@@ -60,5 +71,12 @@ export class UserFormComponent {
 
   cancel(): void {
     void this.router.navigateByUrl('/users');
+  }
+
+  onImageError(event: Event): void {
+    const target = event.target as HTMLImageElement | null;
+    if (target) {
+      target.src = this.defaultAvatar;
+    }
   }
 }

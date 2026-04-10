@@ -20,6 +20,18 @@ public class UserService(IUserRepository userRepository) : IUserService
         return users.Select(MapToDto).ToList();
     }
 
+    public async Task<UserDto?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default)
+    {
+        var normalized = username.Trim();
+        if (normalized.Length == 0)
+        {
+            return null;
+        }
+
+        var user = await userRepository.GetByUsernameAsync(normalized, cancellationToken);
+        return user is null ? null : MapToDto(user);
+    }
+
     public async Task<UserDto> CreateAsync(CreateUserRequest request, CancellationToken cancellationToken = default)
     {
         var username = request.Username.Trim();
@@ -46,12 +58,14 @@ public class UserService(IUserRepository userRepository) : IUserService
         }
 
         var hash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 11);
+        var profileImageUrl = request.ProfileImageUrl?.Trim();
         var user = new User
         {
             Id = Guid.NewGuid(),
             Username = username,
             PasswordHash = hash,
-            Role = role
+            Role = role,
+            ProfileImageUrl = string.IsNullOrWhiteSpace(profileImageUrl) ? null : profileImageUrl
         };
 
         await userRepository.AddAsync(user, cancellationToken);
@@ -74,13 +88,49 @@ public class UserService(IUserRepository userRepository) : IUserService
         return await userRepository.DeleteAsync(id, cancellationToken);
     }
 
+    public async Task<UserDto?> UpdateProfileAsync(
+        string username,
+        UpdateProfileDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = username.Trim();
+        if (normalized.Length == 0)
+        {
+            return null;
+        }
+
+        var user = await userRepository.GetByUsernameForUpdateAsync(normalized, cancellationToken);
+        if (user is null)
+        {
+            return null;
+        }
+
+        var displayName = request.DisplayName?.Trim();
+        var profileImageUrl = request.ProfileImageUrl?.Trim();
+        if (!string.IsNullOrWhiteSpace(profileImageUrl) &&
+            !profileImageUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !profileImageUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Invalid image URL. It should start with http or https.");
+        }
+
+        user.DisplayName = string.IsNullOrWhiteSpace(displayName) ? null : displayName;
+        user.ProfileImageUrl = string.IsNullOrWhiteSpace(profileImageUrl) ? null : profileImageUrl;
+
+        await userRepository.UpdateAsync(user, cancellationToken);
+        return MapToDto(user);
+    }
+
     private static UserDto MapToDto(User user)
     {
         return new UserDto
         {
             Id = user.Id,
             Username = user.Username,
+            DisplayName = user.DisplayName,
             Role = user.Role,
+            ProfileImageUrl = user.ProfileImageUrl,
+            LastActiveAt = user.LastActiveAt,
             CreatedAt = user.CreatedAt
         };
     }
