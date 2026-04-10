@@ -31,9 +31,9 @@
 
       <label class="field">
         <span>Date of birth *</span>
-        <input type="date" formControlName="dateOfBirth" />
+        <input type="date" formControlName="dateOfBirth" [max]="maxDateOfBirth" />
         @if (form.controls.dateOfBirth.touched && form.controls.dateOfBirth.invalid) {
-          <span class="field-error">Required</span>
+          <span class="field-error">{{ getDateOfBirthError(form.controls.dateOfBirth) }}</span>
         }
       </label>
 
@@ -47,9 +47,16 @@
 
       <label class="field field-span">
         <span>Phone number *</span>
-        <input type="tel" formControlName="phoneNumber" autocomplete="tel" />
+        <input
+          type="text"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          formControlName="phoneNumber"
+          autocomplete="tel"
+          (input)="onPhoneInput()"
+        />
         @if (form.controls.phoneNumber.touched && form.controls.phoneNumber.invalid) {
-          <span class="field-error">Required</span>
+          <span class="field-error">{{ getPhoneError(form.controls.phoneNumber) }}</span>
         }
       </label>
 
@@ -68,7 +75,9 @@
 
     <div class="form-actions">
       <button type="button" class="btn-secondary" (click)="cancel()">Cancel</button>
-      <button type="submit" class="btn-primary">Create patient</button>
+      <button type="submit" class="btn-primary" [disabled]="form.invalid || isSubmitting()">
+        {{ isSubmitting() ? 'Saving...' : 'Create patient' }}
+      </button>
     </div>
   </form>
 </div>

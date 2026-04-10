@@ -4,6 +4,7 @@ using api.Domain.Entities;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System.Drawing;
+using System.Text.RegularExpressions;
 
 namespace api.Application.Services;
 
@@ -16,14 +17,24 @@ public class PatientService(
         CreatePatientRequest request,
         CancellationToken cancellationToken = default)
     {
+        var firstName = request.FirstName.Trim();
+        var lastName = request.LastName.Trim();
+        var dateOfBirth = DateTime.SpecifyKind(request.DateOfBirth.Date, DateTimeKind.Utc);
+        var gender = request.Gender.Trim();
+        var phoneNumber = request.PhoneNumber.Trim();
+
+        ValidateAge(dateOfBirth);
+        ValidatePhoneNumber(phoneNumber);
+        await ValidateUniqueNameAsync(firstName, lastName, null, cancellationToken);
+
         var patient = new Patient
         {
             Id = Guid.NewGuid(),
-            FirstName = request.FirstName.Trim(),
-            LastName = request.LastName.Trim(),
-            DateOfBirth = DateTime.SpecifyKind(request.DateOfBirth.Date, DateTimeKind.Utc),
-            Gender = request.Gender.Trim(),
-            PhoneNumber = request.PhoneNumber.Trim(),
+            FirstName = firstName,
+            LastName = lastName,
+            DateOfBirth = dateOfBirth,
+            Gender = gender,
+            PhoneNumber = phoneNumber,
             UnderlyingDisease = NormalizeOptional(request.UnderlyingDisease)
         };
 
@@ -180,11 +191,21 @@ public class PatientService(
             return false;
         }
 
-        patient.FirstName = request.FirstName.Trim();
-        patient.LastName = request.LastName.Trim();
-        patient.DateOfBirth = DateTime.SpecifyKind(request.DateOfBirth.Date, DateTimeKind.Utc);
-        patient.Gender = request.Gender.Trim();
-        patient.PhoneNumber = request.PhoneNumber.Trim();
+        var firstName = request.FirstName.Trim();
+        var lastName = request.LastName.Trim();
+        var dateOfBirth = DateTime.SpecifyKind(request.DateOfBirth.Date, DateTimeKind.Utc);
+        var gender = request.Gender.Trim();
+        var phoneNumber = request.PhoneNumber.Trim();
+
+        ValidateAge(dateOfBirth);
+        ValidatePhoneNumber(phoneNumber);
+        await ValidateUniqueNameAsync(firstName, lastName, patient.Id, cancellationToken);
+
+        patient.FirstName = firstName;
+        patient.LastName = lastName;
+        patient.DateOfBirth = dateOfBirth;
+        patient.Gender = gender;
+        patient.PhoneNumber = phoneNumber;
         patient.UnderlyingDisease = NormalizeOptional(request.UnderlyingDisease);
 
         return await repository.UpdateAsync(patient, cancellationToken);
@@ -219,5 +240,34 @@ public class PatientService(
         }
 
         return age;
+    }
+
+    private async Task ValidateUniqueNameAsync(
+        string firstName,
+        string lastName,
+        Guid? excludeId,
+        CancellationToken cancellationToken)
+    {
+        var exists = await repository.ExistsByFullNameAsync(firstName, lastName, excludeId, cancellationToken);
+        if (exists)
+        {
+            throw new InvalidOperationException("Patient name already exists.");
+        }
+    }
+
+    private static void ValidateAge(DateTime dateOfBirth)
+    {
+        if (CalculateAge(dateOfBirth) < 0)
+        {
+            throw new InvalidOperationException("Age cannot be negative.");
+        }
+    }
+
+    private static void ValidatePhoneNumber(string phoneNumber)
+    {
+        if (!Regex.IsMatch(phoneNumber, @"^\d+$"))
+        {
+            throw new InvalidOperationException("Phone number must be numeric only.");
+        }
     }
 }

@@ -60,8 +60,15 @@ public class PatientsController(IPatientService patientService) : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var created = await patientService.CreateAsync(request, cancellationToken);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        try
+        {
+            var created = await patientService.CreateAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id:guid}")]
@@ -76,13 +83,20 @@ public class PatientsController(IPatientService patientService) : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var updated = await patientService.UpdateAsync(id, request, cancellationToken);
-        if (!updated)
+        try
         {
-            return NotFound();
-        }
+            var updated = await patientService.UpdateAsync(id, request, cancellationToken);
+            if (!updated)
+            {
+                return NotFound();
+            }
 
-        return NoContent();
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpDelete("{id:guid}")]

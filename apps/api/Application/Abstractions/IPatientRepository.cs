@@ -11,6 +11,12 @@ public interface IPatientRepository
 
     Task<Patient?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<bool> ExistsByFullNameAsync(
+        string firstName,
+        string lastName,
+        Guid? excludeId = null,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Patient>> GetForExportAsync(
         PatientExportRequest request,
         CancellationToken cancellationToken = default);

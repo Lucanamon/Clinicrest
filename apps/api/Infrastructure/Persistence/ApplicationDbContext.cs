@@ -72,7 +72,9 @@ public class ApplicationDbContext : DbContext
                 .HasColumnType("timestamp with time zone");
 
             entity.HasIndex(p => new { p.LastName, p.FirstName })
-                .HasDatabaseName("ix_patients_name");
+                .HasDatabaseName("ix_patients_name_unique_active")
+                .IsUnique()
+                .HasFilter("\"IsDeleted\" = FALSE");
         });
 
         modelBuilder.Entity<User>(entity =>

@@ -136,6 +136,25 @@ public class PatientRepository(ApplicationDbContext dbContext) : IPatientReposit
             cancellationToken);
     }
 
+    public async Task<bool> ExistsByFullNameAsync(
+        string firstName,
+        string lastName,
+        Guid? excludeId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.Patients.AsNoTracking().Where(p =>
+            !p.IsDeleted &&
+            p.FirstName == firstName &&
+            p.LastName == lastName);
+
+        if (excludeId.HasValue)
+        {
+            query = query.Where(p => p.Id != excludeId.Value);
+        }
+
+        return await query.AnyAsync(cancellationToken);
+    }
+
     public async Task<bool> UpdateAsync(Patient patient, CancellationToken cancellationToken = default)
     {
         await dbContext.SaveChangesAsync(cancellationToken);

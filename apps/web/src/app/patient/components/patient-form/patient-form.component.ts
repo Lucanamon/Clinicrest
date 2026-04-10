@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import {
+  AbstractControl,
   FormBuilder,
   ReactiveFormsModule,
   Validators
@@ -20,23 +21,34 @@ export class PatientFormComponent {
   private readonly router = inject(Router);
 
   readonly saveError = signal<string | null>(null);
+  readonly isSubmitting = signal(false);
+  readonly maxDateOfBirth = new Date().toISOString().split('T')[0];
 
   readonly form = this.fb.nonNullable.group({
     firstName: ['', [Validators.required, Validators.maxLength(200)]],
     lastName: ['', [Validators.required, Validators.maxLength(200)]],
     dateOfBirth: ['', Validators.required],
     gender: ['', [Validators.required, Validators.maxLength(32)]],
-    phoneNumber: ['', [Validators.required, Validators.maxLength(32)]],
+    phoneNumber: ['', [Validators.required, Validators.maxLength(32), Validators.pattern(/^\d+$/)]],
     underlyingDisease: ['', Validators.maxLength(1000)]
   });
 
+  onPhoneInput(): void {
+    const phoneControl = this.form.controls.phoneNumber;
+    const numericOnly = phoneControl.value.replace(/\D/g, '');
+    if (phoneControl.value !== numericOnly) {
+      phoneControl.setValue(numericOnly, { emitEvent: false });
+    }
+  }
+
   submit(): void {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.isSubmitting()) {
       this.form.markAllAsTouched();
       return;
     }
 
     this.saveError.set(null);
+    this.isSubmitting.set(true);
     const v = this.form.getRawValue();
     const payload = {
       firstName: v.firstName.trim(),
@@ -49,7 +61,14 @@ export class PatientFormComponent {
 
     this.patientService.create(payload).subscribe({
       next: () => this.router.navigateByUrl('/patients'),
-      error: () => this.saveError.set('Could not create patient. Check your input and try again.')
+      error: (err) => {
+        const message = typeof err?.error === 'string'
+          ? err.error
+          : err?.error?.message ?? 'Could not create patient. Check your input and try again.';
+        this.saveError.set(message);
+        this.isSubmitting.set(false);
+      },
+      complete: () => this.isSubmitting.set(false)
     });
   }
 
@@ -60,5 +79,29 @@ export class PatientFormComponent {
 
   cancel(): void {
     void this.router.navigateByUrl('/patients');
+  }
+
+  getPhoneError(control: AbstractControl): string {
+    if (control.hasError('required')) {
+      return 'Required';
+    }
+
+    if (control.hasError('pattern')) {
+      return 'Phone number must be numeric only';
+    }
+
+    if (control.hasError('maxlength')) {
+      return 'Max 32 characters';
+    }
+
+    return 'Invalid phone number';
+  }
+
+  getDateOfBirthError(control: AbstractControl): string {
+    if (control.hasError('required')) {
+      return 'Required';
+    }
+
+    return 'Date of birth cannot be in the future';
   }
 }
