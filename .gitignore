@@ -1887,12 +1887,12 @@ node_modules/rxjs/CODE_OF_CONDUCT.md
 node_modules/rxjs/LICENSE.txt
 node_modules/rxjs/package.json
 node_modules/rxjs/README.md
-node_modules/rxjs/tsconfig.json
+node_modules/rxjs/tsconfig.jsonxjs.umd.min.js
+node_modules/rxjs/dist/bun
 node_modules/rxjs/ajax/package.json
 node_modules/rxjs/dist/bundles/rxjs.umd.js
 node_modules/rxjs/dist/bundles/rxjs.umd.js.map
-node_modules/rxjs/dist/bundles/rxjs.umd.min.js
-node_modules/rxjs/dist/bundles/rxjs.umd.min.js.map
+node_modules/rxjs/dist/bundles/rdles/rxjs.umd.min.js.map
 node_modules/rxjs/dist/cjs/index.js
 node_modules/rxjs/dist/cjs/index.js.map
 node_modules/rxjs/dist/cjs/ajax/index.js
