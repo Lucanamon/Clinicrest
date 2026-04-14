@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface PatientDto {
   id: string;
@@ -57,7 +58,7 @@ export interface GetPatientsParams {
 })
 export class PatientService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/patients';
+  private readonly baseUrl = `${environment.apiUrl}/patients`;
 
   private readonly searchTerm$ = new BehaviorSubject<string>('');
   private readonly sortBy$ = new BehaviorSubject<string>('createdAt');

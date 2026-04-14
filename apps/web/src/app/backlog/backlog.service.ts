@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 import { PagedResult } from '../patient/patient.service';
 
 export interface BacklogDto {
@@ -39,7 +40,7 @@ export interface GetBacklogsParams {
 })
 export class BacklogService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/backlogs';
+  private readonly baseUrl = `${environment.apiUrl}/backlogs`;
 
   private readonly searchTerm$ = new BehaviorSubject<string>('');
   private readonly sortBy$ = new BehaviorSubject<string>('CreatedAt');

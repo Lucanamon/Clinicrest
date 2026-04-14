@@ -1,0 +1,78 @@
+<div class="booking-page">
+  <header class="page-header">
+    <div>
+      <h1>Book a slot</h1>
+      <p class="muted">Times are shown in your local timezone. Availability comes from the server.</p>
+    </div>
+    <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="booking.loading()">
+      Refresh
+    </button>
+  </header>
+
+  @if (booking.listError()) {
+    <div class="banner banner--error" role="alert">
+      <span>{{ booking.listError() }}</span>
+      <button type="button" class="linkish" (click)="refresh()" [disabled]="booking.loading()">Retry</button>
+    </div>
+  }
+
+  @if (booking.bookingError()) {
+    <div class="banner banner--error" role="alert">
+      {{ booking.bookingError() }}
+      <button type="button" class="linkish" (click)="booking.resetBookingError()">Dismiss</button>
+    </div>
+  }
+
+  <section class="toolbar card">
+    <label class="field">
+      <span>Day (UTC)</span>
+      <input
+        type="date"
+        name="slotDate"
+        [ngModel]="booking.selectedDateYmd()"
+        (ngModelChange)="onDateInput($event)"
+      />
+    </label>
+  </section>
+
+  @if (booking.loading() && booking.slots().length === 0 && !booking.listError()) {
+    <p class="muted" aria-live="polite">Loading slots…</p>
+  }
+
+  @if (!booking.loading() && booking.slots().length === 0 && !booking.listError()) {
+    <p class="muted">No slots for this day.</p>
+  }
+
+  <ul class="slot-list" role="list">
+    @for (slot of booking.slots(); track slot.id) {
+      <li class="slot-card" [class.slot-card--full]="slot.available_slots <= 0">
+        <div class="slot-card__time">
+          <span class="label">Start</span>
+          <strong>{{ slot.start_time | utcToLocal: 'medium' }}</strong>
+        </div>
+        <div class="slot-card__meta">
+          <span>Available: <strong>{{ slot.available_slots }}</strong> / {{ slot.capacity }}</span>
+          <span>Booked: {{ slot.booked_count }}</span>
+        </div>
+        <div class="slot-card__actions">
+          @if (slot.available_slots <= 0) {
+            <span class="badge badge--full">Full</span>
+          } @else {
+            <button
+              type="button"
+              class="btn-primary"
+              (click)="book(slot.id)"
+              [disabled]="booking.bookingSlotId() !== null"
+            >
+              @if (booking.bookingSlotId() === slot.id) {
+                Booking…
+              } @else {
+                Book
+              }
+            </button>
+          }
+        </div>
+      </li>
+    }
+  </ul>
+</div>

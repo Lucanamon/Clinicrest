@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, of, tap } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 const TOKEN_KEY = 'clinicrest.token';
 const USERNAME_KEY = 'clinicrest.username';
@@ -53,7 +54,7 @@ export class AuthService {
   }
 
   login(payload: LoginRequest): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>('/api/auth/login', payload).pipe(
+    return this.http.post<LoginResponse>(`${environment.apiUrl}/auth/login`, payload).pipe(
       tap((response) => {
         this.setStorageItem(TOKEN_KEY, response.token);
         this.setStorageItem(USERNAME_KEY, response.username);
@@ -150,7 +151,7 @@ export class AuthService {
       return of(null);
     }
 
-    return this.http.get<CurrentUserProfile>('/api/users/me').pipe(
+    return this.http.get<CurrentUserProfile>(`${environment.apiUrl}/users/me`).pipe(
       tap((profile) => {
         this.currentUserProfileSubject.next(profile);
         if (profile.username) {

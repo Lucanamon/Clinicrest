@@ -66,6 +66,10 @@ builder.Services.AddScoped<IBacklogRepository, BacklogRepository>();
 builder.Services.AddScoped<IBacklogService, BacklogService>();
 builder.Services.AddScoped<IGlobalSearchService, GlobalSearchService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ISlotRepository, SlotRepository>();
+builder.Services.AddScoped<ISlotService, SlotService>();
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<IBookingService, BookingService>();
 
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 
@@ -214,3 +218,5 @@ static async Task SeedRootAdminAsync(WebApplication app)
         logger.LogWarning("Root admin seed skipped: password does not match configured seed and no reset/sync flags enabled.");
     }
 }
+
+public partial class Program;

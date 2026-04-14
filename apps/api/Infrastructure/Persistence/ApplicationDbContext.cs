@@ -23,6 +23,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<Backlog> Backlogs => Set<Backlog>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
+    public DbSet<Booking> Bookings => Set<Booking>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -246,6 +248,94 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(a => a.Timestamp)
                 .HasDatabaseName("ix_audit_logs_timestamp");
+        });
+
+        modelBuilder.Entity<TimeSlot>(entity =>
+        {
+            entity.ToTable(
+                "time_slots",
+                t =>
+                {
+                    t.HasCheckConstraint("chk_time_slots_time_range", "\"end_time\" > \"start_time\"");
+                    t.HasCheckConstraint("chk_time_slots_capacity_positive", "\"capacity\" > 0");
+                    t.HasCheckConstraint(
+                        "chk_time_slots_booked_count_range",
+                        "\"booked_count\" >= 0 AND \"booked_count\" <= \"capacity\"");
+                });
+
+            entity.HasKey(t => t.Id);
+
+            entity.Property(t => t.Id)
+                .HasColumnName("id");
+
+            entity.Property(t => t.StartTime)
+                .IsRequired()
+                .HasColumnName("start_time")
+                .HasColumnType("timestamp with time zone");
+
+            entity.Property(t => t.EndTime)
+                .IsRequired()
+                .HasColumnName("end_time")
+                .HasColumnType("timestamp with time zone");
+
+            entity.Property(t => t.Capacity)
+                .IsRequired()
+                .HasColumnName("capacity");
+
+            entity.Property(t => t.BookedCount)
+                .IsRequired()
+                .HasColumnName("booked_count")
+                .HasDefaultValue(0);
+
+            entity.Property(t => t.CreatedAt)
+                .IsRequired()
+                .HasColumnName("created_at")
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("NOW()");
+        });
+
+        modelBuilder.Entity<Booking>(entity =>
+        {
+            entity.ToTable(
+                "bookings",
+                t => t.HasCheckConstraint("chk_bookings_status", "\"status\" IN ('active', 'cancelled')"));
+
+            entity.HasKey(b => b.Id);
+
+            entity.Property(b => b.Id)
+                .HasColumnName("id");
+
+            entity.Property(b => b.UserId)
+                .IsRequired()
+                .HasColumnName("user_id");
+
+            entity.Property(b => b.SlotId)
+                .IsRequired()
+                .HasColumnName("slot_id");
+
+            entity.Property(b => b.Status)
+                .IsRequired()
+                .HasColumnName("status")
+                .HasColumnType("text");
+
+            entity.Property(b => b.CreatedAt)
+                .IsRequired()
+                .HasColumnName("created_at")
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("NOW()");
+
+            entity.HasOne<TimeSlot>()
+                .WithMany()
+                .HasForeignKey(b => b.SlotId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(b => b.SlotId)
+                .HasDatabaseName("ix_bookings_slot_id");
+
+            entity.HasIndex(b => new { b.UserId, b.SlotId })
+                .IsUnique()
+                .HasDatabaseName("ux_bookings_user_slot_active")
+                .HasFilter("\"status\" = 'active'");
         });
     }
 

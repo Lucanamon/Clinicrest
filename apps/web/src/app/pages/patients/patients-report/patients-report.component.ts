@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { environment } from '../../../../environments/environment';
 
 interface PatientExportResult {
   downloadUrl: string;
@@ -46,7 +47,7 @@ export class PatientsReportComponent implements OnInit {
 
   loadPreview(): void {
     this.http
-      .get<PagedResult<PatientPreviewItem>>('/api/patients/preview', {
+      .get<PagedResult<PatientPreviewItem>>(`${environment.apiUrl}/patients/preview`, {
         params: {
           searchTerm: this.search.trim(),
           sortBy: this.sortBy,
@@ -88,7 +89,7 @@ export class PatientsReportComponent implements OnInit {
 
   downloadExcel(): void {
     this.http
-      .post<PatientExportResult>('/api/patients/export', {
+      .post<PatientExportResult>(`${environment.apiUrl}/patients/export`, {
         name: this.search.trim(),
         sortBy: this.sortBy
       })

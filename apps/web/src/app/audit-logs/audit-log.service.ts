@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface AuditLogDto {
   id: string;
@@ -31,6 +32,6 @@ export class AuditLogService {
     const params = new HttpParams()
       .set('pageNumber', String(pageNumber))
       .set('pageSize', String(pageSize));
-    return this.http.get<PagedAuditLogs>('/api/audit-logs', { params });
+    return this.http.get<PagedAuditLogs>(`${environment.apiUrl}/audit-logs`, { params });
   }
 }

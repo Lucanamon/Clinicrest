@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 import { PagedResult } from '../patient/patient.service';
 
 export interface AppointmentDto {
@@ -41,7 +42,7 @@ export interface GetAppointmentsParams {
 })
 export class AppointmentService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/appointments';
+  private readonly baseUrl = `${environment.apiUrl}/appointments`;
 
   private readonly searchTerm$ = new BehaviorSubject<string>('');
   private readonly sortBy$ = new BehaviorSubject<string>('AppointmentDate');

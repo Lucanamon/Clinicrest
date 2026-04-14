@@ -2,6 +2,7 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
 import { inject, PLATFORM_ID } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
+import { skipGlobalErrorAlert } from './http-context.tokens';
 
 interface ApiErrorResponse {
   statusCode?: number;
@@ -24,7 +25,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         error
       });
 
-      if (isPlatformBrowser(platformId)) {
+      if (isPlatformBrowser(platformId) && !req.context.get(skipGlobalErrorAlert)) {
         window.alert(message);
       }
 

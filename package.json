@@ -9,6 +9,7 @@
     "dev:api": "dotnet watch --project ./apps/api run --urls http://localhost:5001",
     "dev:web": "wait-on http://127.0.0.1:5001/health -t 120000 && npm run start -w web -- --host localhost --port 4200 --open",
     "build:api": "dotnet build ./apps/api/api.csproj -c Release",
+    "test:booking-stress": "dotnet test ./tests/Clinicrest.Api.BookingStress/Clinicrest.Api.BookingStress.csproj -c Release",
     "build:web": "npm run build -w web",
     "dev": "cross-env FORCE_COLOR=1 concurrently --kill-others --success first --names API,WEB --prefix-colors blue,magenta \"npm run dev:api\" \"npm run dev:web\""
   },

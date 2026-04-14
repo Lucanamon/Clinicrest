@@ -6,7 +6,8 @@ import { environment } from '../../environments/environment';
  */
 export const apiBaseUrlInterceptor: HttpInterceptorFn = (req, next) => {
   const base = environment.apiBaseUrl?.trim();
-  if (!base || !req.url.startsWith('/api')) {
+  const apiPrefix = (environment.apiUrl ?? '/api').replace(/\/$/, '');
+  if (!base || !req.url.startsWith(apiPrefix)) {
     return next(req);
   }
 

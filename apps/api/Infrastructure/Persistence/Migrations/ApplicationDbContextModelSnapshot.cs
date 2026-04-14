@@ -168,6 +168,48 @@ namespace api.Infrastructure.Persistence.Migrations
                     b.ToTable("backlogs", (string)null);
                 });
 
+            modelBuilder.Entity("api.Domain.Entities.Booking", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("SlotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("slot_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SlotId")
+                        .HasDatabaseName("ix_bookings_slot_id");
+
+                    b.HasIndex("UserId", "SlotId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_bookings_user_slot_active")
+                        .HasFilter("\"status\" = 'active'");
+
+                    b.ToTable("bookings", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_bookings_status", "\"status\" IN ('active', 'cancelled')");
+                        });
+                });
+
             modelBuilder.Entity("api.Domain.Entities.Patient", b =>
                 {
                     b.Property<Guid>("Id")
@@ -217,9 +259,54 @@ namespace api.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("LastName", "FirstName")
-                        .HasDatabaseName("ix_patients_name");
+                        .IsUnique()
+                        .HasDatabaseName("ix_patients_name_unique_active")
+                        .HasFilter("\"IsDeleted\" = FALSE");
 
                     b.ToTable("patients", (string)null);
+                });
+
+            modelBuilder.Entity("api.Domain.Entities.TimeSlot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("BookedCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("booked_count");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("capacity");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime>("EndTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_time");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_time");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("time_slots", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_time_slots_booked_count_range", "\"booked_count\" >= 0 AND \"booked_count\" <= \"capacity\"");
+
+                            t.HasCheckConstraint("chk_time_slots_capacity_positive", "\"capacity\" > 0");
+
+                            t.HasCheckConstraint("chk_time_slots_time_range", "\"end_time\" > \"start_time\"");
+                        });
                 });
 
             modelBuilder.Entity("api.Domain.Entities.User", b =>
@@ -307,6 +394,15 @@ namespace api.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("AssignedTo");
+                });
+
+            modelBuilder.Entity("api.Domain.Entities.Booking", b =>
+                {
+                    b.HasOne("api.Domain.Entities.TimeSlot", null)
+                        .WithMany()
+                        .HasForeignKey("SlotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

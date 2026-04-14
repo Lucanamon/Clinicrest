@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface DoctorListItemDto {
   id: string;
@@ -34,7 +35,7 @@ export interface UpdateProfileRequest {
 })
 export class UsersService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/users';
+  private readonly baseUrl = `${environment.apiUrl}/users`;
 
   getDoctors(): Observable<DoctorListItemDto[]> {
     return this.http.get<DoctorListItemDto[]>(`${this.baseUrl}/doctors`);
