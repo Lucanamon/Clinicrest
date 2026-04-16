@@ -1,149 +1,132 @@
-<div class="booking-page">
-  <header class="page-header">
+<main class="booking-shell">
+  @if (guestPhone) {
+    <button type="button" class="back-register-btn" (click)="backToRegister()">← Back to Register</button>
+  }
+
+  <header class="booking-header">
     <div>
-      <h1>Book a slot</h1>
-      <p class="muted">Times are shown in your local timezone. Availability comes from the server.</p>
-      @if (guestPhone) {
-        <p class="muted guest-hint" role="status">
-          Guest booking as <strong>{{ guestPhone }}</strong>. Need a different number?
-          <a routerLink="/register" class="inline-link">Register again</a>.
-        </p>
-      }
+      <h1>Booking Schedule</h1>
+      <p>Manage doctor availability</p>
     </div>
-    <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="booking.loading()">
-      Refresh
+    <button type="button" class="action-btn" (click)="onAddSlotClick()" [disabled]="booking.creatingSlot()">
+      + Add Slot
     </button>
   </header>
 
+  <div class="list-toolbar">
+    <label class="toolbar-field">
+      <span class="field-label">Date</span>
+      <input class="date-input" type="date" [value]="weekStartYmd" (change)="onWeekStartChange($any($event.target).value)" />
+    </label>
+
+    <label class="toolbar-field">
+      <span class="field-label">Doctor</span>
+      <select class="select-input" [(ngModel)]="doctorFilter">
+        <option value="">All doctors</option>
+      </select>
+    </label>
+
+    <button type="button" class="btn-secondary refresh-btn" (click)="refresh()" [disabled]="booking.loading()">
+      Refresh
+    </button>
+  </div>
+
   @if (booking.listError()) {
-    <div class="banner banner--error" role="alert">
+    <section class="state-card error" role="alert">
       <span>{{ booking.listError() }}</span>
       <button type="button" class="linkish" (click)="refresh()" [disabled]="booking.loading()">Retry</button>
-    </div>
+    </section>
   }
 
-  @if (booking.bookingError()) {
-    <div class="banner banner--error" role="alert">
-      {{ booking.bookingError() }}
-      <button type="button" class="linkish" (click)="booking.resetBookingError()">Dismiss</button>
-    </div>
+  @if (booking.slotCreateError()) {
+    <section class="state-card error" role="alert">
+      {{ booking.slotCreateError() }}
+      <button type="button" class="linkish" (click)="booking.resetSlotCreateError()">Dismiss</button>
+    </section>
   }
 
-  <section class="card tracked-bookings">
-    <h2>My bookings</h2>
-    @if (!guestPhone) {
-      <p class="muted">Enter your phone number to track and cancel your bookings.</p>
-      <form class="phone-track-form" (ngSubmit)="applyPhone()">
-        <input
-          type="tel"
-          inputmode="numeric"
-          name="phoneInput"
-          [(ngModel)]="enteredPhone"
-          placeholder="e.g. 08123456789"
-        />
-        <button type="submit" class="btn-secondary">Track bookings</button>
-      </form>
-    } @else {
-      @if (booking.phoneBookingsError()) {
-        <div class="banner banner--error" role="alert">
-          <span>{{ booking.phoneBookingsError() }}</span>
-          <button type="button" class="linkish" (click)="booking.loadBookingsByPhone(guestPhone)" [disabled]="booking.phoneBookingsLoading()">
-            Retry
-          </button>
-        </div>
-      }
-
-      @if (booking.phoneBookingsLoading()) {
-        <p class="muted" aria-live="polite">Loading your bookings…</p>
-      }
-
-      @if (!booking.phoneBookingsLoading() && booking.phoneBookings().length === 0 && !booking.phoneBookingsError()) {
-        <p class="muted">No bookings found for this phone number.</p>
-      }
-
-      @if (booking.phoneBookings().length > 0) {
-        <ul class="tracked-booking-list" role="list">
-          @for (item of booking.phoneBookings(); track item.id) {
-            <li class="slot-card">
-              <div class="slot-card__time">
-                <span class="label">Date</span>
-                <strong>{{ item.start_time | utcToLocal: 'mediumDate' }}</strong>
-                <span class="muted">{{ item.start_time | utcToLocal: 'HH:mm' }}-{{ item.end_time | utcToLocal: 'HH:mm' }}</span>
-              </div>
-              <div class="slot-card__meta">
-                <span>Status: <strong [class.status-cancelled]="item.status === 'cancelled'">{{ item.status }}</strong></span>
-              </div>
-              <div class="slot-card__actions">
-                <button
-                  type="button"
-                  class="btn-secondary"
-                  (click)="cancelBooking(item.id)"
-                  [disabled]="item.status !== 'active' || booking.cancelBookingId() !== null"
-                >
-                  @if (booking.cancelBookingId() === item.id) {
-                    Cancelling…
-                  } @else {
-                    Cancel
-                  }
-                </button>
-              </div>
-            </li>
-          }
-        </ul>
-      }
-    }
-  </section>
-
-  <section class="toolbar card">
-    <label class="field">
-      <span>Day (UTC)</span>
-      <input
-        type="date"
-        name="slotDate"
-        [ngModel]="booking.selectedDateYmd()"
-        (ngModelChange)="onDateInput($event)"
-      />
-    </label>
-  </section>
-
-  @if (booking.loading() && booking.slots().length === 0 && !booking.listError()) {
-    <p class="muted" aria-live="polite">Loading slots…</p>
+  @if (localFormError) {
+    <section class="state-card error" role="alert">
+      {{ localFormError }}
+    </section>
   }
 
-  @if (!booking.loading() && booking.slots().length === 0 && !booking.listError()) {
-    <p class="muted">No slots for this day.</p>
-  }
+  <div class="calendar-layout">
+    <section class="calendar-center table-card">
+      <div class="calendar-grid-wrap">
+        <div class="calendar-grid">
+          <div class="calendar-row calendar-row--header">
+            <div class="time-col-head">Time</div>
+            @for (day of calendarDays; track day.ymd) {
+              <button
+                type="button"
+                class="day-head"
+                [class.day-head--active]="day.ymd === activeDayYmd"
+                (click)="selectDay(day.ymd)"
+              >
+                <strong>{{ day.label }}</strong>
+                <span>{{ slotsForDay(day.ymd).length }} slot(s)</span>
+              </button>
+            }
+          </div>
 
-  <ul class="slot-list" role="list">
-    @for (slot of booking.slots(); track slot.id) {
-      <li class="slot-card" [class.slot-card--full]="slot.available_slots <= 0">
-        <div class="slot-card__time">
-          <span class="label">Start</span>
-          <strong>{{ slot.start_time | utcToLocal: 'medium' }}</strong>
-        </div>
-        <div class="slot-card__meta">
-          <span>Available: <strong>{{ slot.available_slots }}</strong> / {{ slot.capacity }}</span>
-          <span>Booked: {{ slot.booked_count }}</span>
-        </div>
-        <div class="slot-card__actions">
-          @if (slot.available_slots <= 0) {
-            <span class="badge badge--full">Full</span>
-          } @else {
-            <button
-              type="button"
-              class="btn-primary"
-              (click)="book(slot.id)"
-              [disabled]="booking.bookingSlotId() !== null"
-            >
-              @if (booking.bookingSlotId() === slot.id) {
-                Booking…
-              } @else {
-                Book
+          @for (time of timeRows; track time.value) {
+            <div class="calendar-row">
+              <div class="time-col">{{ time.label }}</div>
+              @for (day of calendarDays; track day.ymd) {
+                @if (slotAt(day.ymd, time.value); as slot) {
+                  <div class="slot-card slot-card--filled">
+                    <div class="slot-time">{{ slot.start_time | utcToLocal: 'HH:mm' }}–{{ slot.end_time | utcToLocal: 'HH:mm' }}</div>
+                    <div class="slot-meta">Capacity: {{ slot.capacity }}</div>
+                    <div class="slot-meta">Booked: {{ slot.booked_count }}</div>
+                    <div class="slot-meta">Available: {{ slot.available_slots }}</div>
+                    <div class="slot-actions">
+                      <button
+                        type="button"
+                        class="btn-secondary slot-capacity-btn"
+                        (click)="decreaseCapacity(slot)"
+                        [disabled]="!canDecreaseCapacity(slot) || booking.capacityAdjustingSlotId() === slot.id"
+                      >
+                        -
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-secondary slot-capacity-btn"
+                        (click)="increaseCapacity(slot)"
+                        [disabled]="booking.capacityAdjustingSlotId() === slot.id"
+                      >
+                        +
+                      </button>
+                      <button type="button" class="btn-secondary slot-view-btn" (click)="openCell(day.ymd, time.value)">
+                        View
+                      </button>
+                    </div>
+                  </div>
+                } @else {
+                  <button type="button" class="slot-card slot-card--empty" (click)="openCell(day.ymd, time.value)">
+                    <span>+ Create slot</span>
+                  </button>
+                }
               }
-            </button>
+            </div>
           }
         </div>
-      </li>
-    }
-  </ul>
-</div>
+      </div>
+    </section>
+
+    <aside class="slot-form table-card">
+      <h2>Slot details</h2>
+      @if (selectedSlot) {
+        <p class="muted-text">Selected existing slot</p>
+        <div class="detail-list">
+          <div><span>Time:</span> {{ selectedSlot.start_time | utcToLocal: 'yyyy-MM-dd HH:mm' }} - {{ selectedSlot.end_time | utcToLocal: 'HH:mm' }}</div>
+          <div><span>Capacity:</span> {{ selectedSlot.capacity }}</div>
+          <div><span>Booked:</span> {{ selectedSlot.booked_count }}</div>
+          <div><span>Available:</span> {{ selectedSlot.available_slots }}</div>
+        </div>
+      } @else {
+        <p class="muted-text">Click an existing slot to view details. Click an empty cell to create a slot.</p>
+      }
+    </aside>
+  </div>
+</main>

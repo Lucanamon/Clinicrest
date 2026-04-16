@@ -1,85 +1,146 @@
 <div class="register-page">
   <header class="page-header">
     <div>
-      <h1>Guest booking</h1>
-      <p class="muted">No account required. Enter your phone number, pick a day and time, then confirm.</p>
+      @if (isRegisterEntry) {
+        <h1>Guest entry</h1>
+        <p class="muted">Enter your phone number to continue to booking request.</p>
+      } @else {
+        <h1>Guest booking request</h1>
+        <p class="muted">Pick an available doctor slot, enter your phone number, and confirm.</p>
+      }
     </div>
-    <a routerLink="/login" class="btn-secondary link-btn">Staff login</a>
+    @if (!isRegisterEntry) {
+      <div class="header-actions">
+        <button type="button" class="btn-secondary" (click)="refreshSlots()" [disabled]="booking.loading()">Refresh</button>
+        <a routerLink="/login" class="btn-secondary link-btn">Staff login</a>
+      </div>
+    }
   </header>
 
-  @if (booking.listError()) {
+  @if (!isRegisterEntry && booking.listError()) {
     <div class="banner banner--error" role="alert">
       <span>{{ booking.listError() }}</span>
-      <button type="button" class="linkish" (click)="booking.loadSlots()" [disabled]="booking.loading()">Retry</button>
+      <button type="button" class="linkish" (click)="refreshSlots()" [disabled]="booking.loading()">Retry</button>
     </div>
   }
 
-  @if (booking.bookingError()) {
+  @if (!isRegisterEntry && booking.bookingError()) {
     <div class="banner banner--error" role="alert">
       {{ booking.bookingError() }}
       <button type="button" class="linkish" (click)="booking.resetBookingError()">Dismiss</button>
     </div>
   }
 
-  <form class="card form-card" (ngSubmit)="submit()" [formGroup]="form" novalidate>
-    <div class="field">
-      <label for="reg-phone">Phone number</label>
-      <input
-        id="reg-phone"
-        type="tel"
-        inputmode="numeric"
-        autocomplete="tel"
-        formControlName="phoneNumber"
-        placeholder="Digits only"
-        [attr.aria-invalid]="form.controls.phoneNumber.invalid && form.controls.phoneNumber.touched"
-      />
-      @if (form.controls.phoneNumber.touched && form.controls.phoneNumber.hasError('required')) {
-        <span class="field-error" role="alert">Phone number is required.</span>
-      }
-      @if (form.controls.phoneNumber.touched && form.controls.phoneNumber.hasError('pattern')) {
-        <span class="field-error" role="alert">Use digits only (no spaces or symbols).</span>
-      }
+  @if (!isRegisterEntry && successMessage) {
+    <div class="banner banner--success" role="status" aria-live="polite">
+      {{ successMessage }}
     </div>
+  }
 
-    <div class="field">
-      <label for="reg-date">Date</label>
-      <input id="reg-date" type="date" formControlName="dateYmd" />
-    </div>
-
-    <div class="field">
-      <label for="reg-slot">Time slot</label>
-      <select
-        id="reg-slot"
-        formControlName="slotId"
-        [attr.aria-invalid]="form.controls.slotId.invalid && form.controls.slotId.touched"
-      >
-        <option value="">— Select a slot —</option>
-        @for (slot of booking.slots(); track slot.id) {
-          <option [value]="slot.id" [disabled]="slot.available_slots <= 0">
-            {{ slot.start_time | utcToLocal: 'HH:mm' }}–{{ slot.end_time | utcToLocal: 'HH:mm' }} · capacity
-            {{ slot.capacity }} · available {{ slot.available_slots }}
-          </option>
+  @if (isRegisterEntry) {
+    <form class="card form-card register-only-form" (ngSubmit)="continueToRequest()" [formGroup]="form" novalidate>
+      <h2>Continue as guest</h2>
+      <div class="field">
+        <label for="reg-phone-entry">Phone number</label>
+        <input
+          id="reg-phone-entry"
+          type="text"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          autocomplete="tel"
+          formControlName="phoneNumber"
+          (input)="onPhoneInput($event)"
+          placeholder="Digits only"
+          [attr.aria-invalid]="form.controls.phoneNumber.invalid && form.controls.phoneNumber.touched"
+        />
+        @if (form.controls.phoneNumber.touched && form.controls.phoneNumber.hasError('required')) {
+          <span class="field-error" role="alert">Phone number is required.</span>
         }
-      </select>
-      @if (form.controls.slotId.touched && form.controls.slotId.hasError('required')) {
-        <span class="field-error" role="alert">Choose an available time slot.</span>
-      }
+        @if (form.controls.phoneNumber.touched && form.controls.phoneNumber.hasError('pattern')) {
+          <span class="field-error" role="alert">Phone number must contain digits only.</span>
+        }
+      </div>
+      <button type="submit" class="btn-primary">Continue to request</button>
+    </form>
+  } @else {
+    <button type="button" class="btn-secondary back-btn" (click)="goBack()">← Back</button>
+    <div class="request-layout">
+      <section class="card calendar-card">
+        <h2>Available slots</h2>
+
+        @if (booking.loading() && booking.slots().length === 0 && !booking.listError()) {
+          <p class="muted" aria-live="polite">Loading available slots…</p>
+        }
+
+        @if (!booking.loading() && booking.slots().length === 0 && !booking.listError()) {
+          <p class="muted">No available slots right now. Please check again soon.</p>
+        }
+
+        <div class="day-groups" [class.day-groups--updated]="slotsJustUpdated">
+          @for (group of calendarGroups(); track group.ymd) {
+            <article class="day-group">
+              <h3>{{ group.label }}</h3>
+              <ul class="slot-list" role="list">
+                @for (slot of group.slots; track slot.id) {
+                  <li>
+                    <button
+                      type="button"
+                      class="slot-btn"
+                      [class.slot-btn--selected]="selectedSlotId === slot.id"
+                      [disabled]="!isSlotSelectable(slot)"
+                      (click)="selectSlot(slot)"
+                    >
+                      <span>{{ slot.start_time | utcToLocal: 'HH:mm' }}-{{ slot.end_time | utcToLocal: 'HH:mm' }}</span>
+                    <span>Available: {{ availableSlots(slot) }}</span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            </article>
+          }
+        </div>
+      </section>
+
+      <form class="card form-card" (ngSubmit)="submit()" [formGroup]="form" novalidate>
+        <h2>Complete request</h2>
+        <p class="muted">
+          Selected slot:
+          <strong>{{ selectedSlotSummary || 'None selected' }}</strong>
+        </p>
+
+        <div class="field">
+          <label for="reg-phone">Phone number</label>
+          <input
+            id="reg-phone"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            autocomplete="tel"
+            formControlName="phoneNumber"
+            (input)="onPhoneInput($event)"
+            placeholder="Digits only"
+            [attr.aria-invalid]="form.controls.phoneNumber.invalid && form.controls.phoneNumber.touched"
+          />
+          @if (form.controls.phoneNumber.touched && form.controls.phoneNumber.hasError('required')) {
+            <span class="field-error" role="alert">Phone number is required.</span>
+          }
+          @if (form.controls.phoneNumber.touched && form.controls.phoneNumber.hasError('pattern')) {
+            <span class="field-error" role="alert">Phone number must contain digits only.</span>
+          }
+        </div>
+
+        @if (!selectedSlotId) {
+          <span class="field-error" role="alert">Select a slot before submitting.</span>
+        }
+
+        <button type="submit" class="btn-primary" [disabled]="isSubmitting || booking.bookingSlotId() !== null || !selectedSlotId">
+          @if (isSubmitting || booking.bookingSlotId()) {
+            Booking…
+          } @else {
+            Confirm booking
+          }
+        </button>
+      </form>
     </div>
-
-    @if (booking.loading() && booking.slots().length === 0 && !booking.listError()) {
-      <p class="muted" aria-live="polite">Loading slots…</p>
-    }
-
-    @if (!booking.loading() && booking.slots().length === 0 && !booking.listError()) {
-      <p class="muted">No slots for this day.</p>
-    }
-
-    <button type="submit" class="btn-primary" [disabled]="booking.loading() || booking.bookingSlotId() !== null">
-      @if (booking.bookingSlotId()) {
-        Booking…
-      } @else {
-        Book
-      }
-    </button>
-  </form>
+  }
 </div>

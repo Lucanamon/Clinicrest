@@ -4,6 +4,7 @@ import { Component, Inject, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angu
 import { Router } from '@angular/router';
 import { Subject, interval, of } from 'rxjs';
 import { catchError, startWith, switchMap, takeUntil } from 'rxjs/operators';
+import { AuthService } from '../services/auth';
 import { UserDto, UsersService } from '../users/users.service';
 
 @Component({
@@ -16,6 +17,7 @@ import { UserDto, UsersService } from '../users/users.service';
 export class RightSidebarComponent implements OnInit, OnDestroy {
   private readonly usersService = inject(UsersService);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
   private readonly destroy$ = new Subject<void>();
 
   readonly defaultAvatar = 'https://ui-avatars.com/api/?name=User';
@@ -32,6 +34,12 @@ export class RightSidebarComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    if (this.auth.isGuest()) {
+      // Guests should never call protected /api/users endpoints.
+      this.sortedUsers = [];
       return;
     }
 

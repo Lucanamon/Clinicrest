@@ -8,49 +8,59 @@
       </div>
     </div>
 
-    <nav class="nav-links" aria-label="Main navigation">
-      <a routerLink="/patients" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-        Patients
-      </a>
-      <a routerLink="/appointments" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-        Appointments
-      </a>
-      <a routerLink="/booking" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-        Booking
-      </a>
-      <a routerLink="/backlog" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-        Backlog
-      </a>
-      @if (auth.isRootAdmin()) {
-        <a routerLink="/users" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          Users
+    @if (isGuest) {
+      <p class="guest-mode-note">Guest mode</p>
+    } @else {
+      <nav class="nav-links" aria-label="Main navigation">
+        <a routerLink="/patients" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          Patients
         </a>
-        <a routerLink="/audit-logs" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          Audit log
+        <a routerLink="/appointments" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          Appointments
         </a>
-      }
-    </nav>
+        @if (canAccessBooking) {
+          <a routerLink="/booking" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            Booking
+          </a>
+        }
+        <a routerLink="/backlog" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          Backlog
+        </a>
+        @if (auth.isRootAdmin()) {
+          <a routerLink="/users" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            Users
+          </a>
+          <a routerLink="/audit-logs" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            Audit log
+          </a>
+        }
+      </nav>
+    }
   </aside>
 
   <div class="main-panel">
     <header class="topbar">
-      <app-global-search />
+      @if (isGuest) {
+        <div class="guest-mode-banner">Guest mode</div>
+      } @else {
+        <app-global-search />
 
-      <div class="topbar-actions">
-        <button class="user-pill" type="button" (click)="goToProfile()">
-          <img
-            class="avatar-image"
-            [src]="profileImageUrl || defaultAvatar"
-            (error)="onImageError($event)"
-            width="35"
-            height="35"
-            alt="User avatar"
-          />
-          <span class="name">{{ displayName }}</span>
-        </button>
+        <div class="topbar-actions">
+          <button class="user-pill" type="button" (click)="goToProfile()">
+            <img
+              class="avatar-image"
+              [src]="profileImageUrl || defaultAvatar"
+              (error)="onImageError($event)"
+              width="35"
+              height="35"
+              alt="User avatar"
+            />
+            <span class="name">{{ displayName }}</span>
+          </button>
 
-        <button class="logout-btn" type="button" (click)="logout()">Logout</button>
-      </div>
+          <button class="logout-btn" type="button" (click)="logout()">Logout</button>
+        </div>
+      }
     </header>
 
     <main class="content">
@@ -58,5 +68,7 @@
     </main>
   </div>
 
-  <app-right-sidebar />
+  @if (!isGuest) {
+    <app-right-sidebar />
+  }
 </div>

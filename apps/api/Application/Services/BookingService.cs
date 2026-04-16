@@ -1,10 +1,13 @@
 using api.Application.Abstractions;
 using api.Application.Bookings;
+using System.Text.RegularExpressions;
 
 namespace api.Application.Services;
 
 public class BookingService(IBookingRepository bookingRepository) : IBookingService
 {
+    private static readonly Regex PhoneDigitsRegex = new("^[0-9]+$", RegexOptions.Compiled);
+
     public async Task<BookingResult> CreateAsync(CreateBookingRequest request, CancellationToken cancellationToken = default)
     {
         var slotId = request.ResolveSlotId();
@@ -57,13 +60,10 @@ public class BookingService(IBookingRepository bookingRepository) : IBookingServ
         }
 
         var trimmed = raw.Trim();
-        foreach (var ch in trimmed)
+        if (!PhoneDigitsRegex.IsMatch(trimmed))
         {
-            if (!char.IsAsciiDigit(ch))
-            {
-                error = "phoneNumber must contain digits only.";
-                return false;
-            }
+            error = "phoneNumber must contain digits only.";
+            return false;
         }
 
         if (trimmed.Length is < 9 or > 10)

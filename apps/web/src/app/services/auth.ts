@@ -181,6 +181,10 @@ export class AuthService {
     return !!token && this.isTokenValid(token);
   }
 
+  isGuest(): boolean {
+    return !this.getToken();
+  }
+
   getUser(): Record<string, unknown> | null {
     return this.currentUser;
   }

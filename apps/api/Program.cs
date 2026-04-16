@@ -9,90 +9,120 @@ using api.Infrastructure.Integrations;
 using api.Infrastructure.Middleware;
 using api.Infrastructure.Persistence;
 using api.Infrastructure.Persistence.Repositories;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddHealthChecks();
-
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICurrentUserAccessor, HttpContextCurrentUserAccessor>();
-builder.Services.AddScoped<IAuditLogService, AuditLogService>();
-
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+try
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
-});
+    var builder = WebApplication.CreateBuilder(args);
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection must be configured.");
+    var sanitizedConnectionString = SanitizeConnectionString(connectionString);
+    Console.WriteLine($"[Startup] DefaultConnection={sanitizedConnectionString}");
 
-var jwtSection = builder.Configuration.GetSection("Jwt");
-var jwtIssuer = jwtSection["Issuer"] ?? "clinicrest-api";
-var jwtAudience = jwtSection["Audience"] ?? "clinicrest-web";
-var jwtSecret = jwtSection["Secret"] ?? throw new InvalidOperationException("Jwt:Secret must be configured.");
-var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));
+    builder.Services.AddControllers();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
+    builder.Services.AddHealthChecks();
 
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<ICurrentUserAccessor, HttpContextCurrentUserAccessor>();
+    builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
     {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateIssuerSigningKey = true,
-            ValidateLifetime = true,
-            ValidIssuer = jwtIssuer,
-            ValidAudience = jwtAudience,
-            IssuerSigningKey = signingKey,
-            ClockSkew = TimeSpan.FromSeconds(30),
-            RoleClaimType = ClaimTypes.Role
-        };
+        options.UseNpgsql(connectionString);
     });
 
-builder.Services.AddAuthorization();
+    var jwtSection = builder.Configuration.GetSection("Jwt");
+    var jwtIssuer = jwtSection["Issuer"] ?? "clinicrest-api";
+    var jwtAudience = jwtSection["Audience"] ?? "clinicrest-web";
+    var jwtSecret = jwtSection["Secret"] ?? throw new InvalidOperationException("Jwt:Secret must be configured.");
+    var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));
 
-builder.Services.AddScoped<IPatientRepository, PatientRepository>();
-builder.Services.AddScoped<IPatientService, PatientService>();
-builder.Services.AddScoped<IGoogleDriveService, GoogleDriveService>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
-builder.Services.AddScoped<IAppointmentService, AppointmentService>();
-builder.Services.AddScoped<IBacklogRepository, BacklogRepository>();
-builder.Services.AddScoped<IBacklogService, BacklogService>();
-builder.Services.AddScoped<IGlobalSearchService, GlobalSearchService>();
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<ISlotRepository, SlotRepository>();
-builder.Services.AddScoped<ISlotService, SlotService>();
-builder.Services.AddScoped<IBookingRepository, BookingRepository>();
-builder.Services.AddScoped<IBookingService, BookingService>();
+    builder.Services
+        .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateIssuerSigningKey = true,
+                ValidateLifetime = true,
+                ValidIssuer = jwtIssuer,
+                ValidAudience = jwtAudience,
+                IssuerSigningKey = signingKey,
+                ClockSkew = TimeSpan.FromSeconds(30),
+                RoleClaimType = ClaimTypes.Role
+            };
+        });
 
-builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+    builder.Services.AddAuthorization(options =>
+    {
+        // Keep endpoints public by default; protect only explicitly attributed controllers/actions.
+        options.FallbackPolicy = null;
+    });
 
-var app = builder.Build();
+    builder.Services.AddScoped<IPatientRepository, PatientRepository>();
+    builder.Services.AddScoped<IPatientService, PatientService>();
+    builder.Services.AddScoped<IGoogleDriveService, GoogleDriveService>();
+    builder.Services.AddScoped<IUserRepository, UserRepository>();
+    builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+    builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+    builder.Services.AddScoped<IBacklogRepository, BacklogRepository>();
+    builder.Services.AddScoped<IBacklogService, BacklogService>();
+    builder.Services.AddScoped<IGlobalSearchService, GlobalSearchService>();
+    builder.Services.AddScoped<IUserService, UserService>();
+    builder.Services.AddScoped<ISlotRepository, SlotRepository>();
+    builder.Services.AddScoped<ISlotService, SlotService>();
+    builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+    builder.Services.AddScoped<IBookingService, BookingService>();
 
-await ApplyDatabaseMigrationsAsync(app);
-await SeedRootAdminAsync(app);
+    builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    var app = builder.Build();
+
+    app.UseExceptionHandler(errorApp =>
+    {
+        errorApp.Run(async context =>
+        {
+            var error = context.Features.Get<IExceptionHandlerFeature>();
+            Console.WriteLine(error?.Error);
+            await Task.CompletedTask;
+        });
+    });
+
+    await LogDatabaseStateAsync(app);
+    await ApplyDatabaseMigrationsAsync(app);
+    await SeedRootAdminAsync(app);
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
+
+    app.UseMiddleware<ExceptionHandlingMiddleware>();
+    app.UseHttpsRedirection();
+    app.UseStaticFiles();
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.UseMiddleware<ActivityMiddleware>();
+    app.MapControllers();
+    app.MapHealthChecks("/health");
+    app.Run();
 }
-
-app.UseMiddleware<ExceptionHandlingMiddleware>();
-app.UseHttpsRedirection();
-app.UseStaticFiles();
-app.UseAuthentication();
-app.UseAuthorization();
-app.UseMiddleware<ActivityMiddleware>();
-app.MapControllers();
-app.MapHealthChecks("/health");
-app.Run();
+catch (Exception ex)
+{
+    Console.Error.WriteLine("[Startup] Fatal exception:");
+    Console.Error.WriteLine(ex);
+    throw;
+}
 
 static async Task ApplyDatabaseMigrationsAsync(WebApplication app)
 {
@@ -122,6 +152,41 @@ static async Task ApplyDatabaseMigrationsAsync(WebApplication app)
 
     // Final attempt surfaces full error to fail fast on unrecoverable startup issues.
     await dbContext.Database.MigrateAsync();
+}
+
+static async Task LogDatabaseStateAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    await using var connection = dbContext.Database.GetDbConnection();
+    if (connection.State != System.Data.ConnectionState.Open)
+    {
+        await connection.OpenAsync();
+    }
+
+    await using var command = connection.CreateCommand();
+    command.CommandText =
+        """
+        SELECT current_database(),
+               EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'time_slots'),
+               EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'bookings');
+        """;
+
+    await using var reader = await command.ExecuteReaderAsync();
+    if (await reader.ReadAsync())
+    {
+        var databaseName = reader.GetString(0);
+        var hasTimeSlots = reader.GetBoolean(1);
+        var hasBookings = reader.GetBoolean(2);
+
+        logger.LogInformation(
+            "Database verification: Database={DatabaseName}, time_slots={HasTimeSlots}, bookings={HasBookings}",
+            databaseName,
+            hasTimeSlots,
+            hasBookings);
+    }
 }
 
 static async Task SeedRootAdminAsync(WebApplication app)
@@ -217,6 +282,22 @@ static async Task SeedRootAdminAsync(WebApplication app)
     {
         logger.LogWarning("Root admin seed skipped: password does not match configured seed and no reset/sync flags enabled.");
     }
+}
+
+static string SanitizeConnectionString(string connectionString)
+{
+    var builder = new NpgsqlConnectionStringBuilder(connectionString);
+    if (!string.IsNullOrWhiteSpace(builder.Password))
+    {
+        builder.Password = "***";
+    }
+
+    if (!string.IsNullOrWhiteSpace(builder.Username))
+    {
+        builder.Username = builder.Username;
+    }
+
+    return builder.ConnectionString;
 }
 
 public partial class Program;

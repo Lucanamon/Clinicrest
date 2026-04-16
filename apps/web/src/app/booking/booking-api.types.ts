@@ -10,6 +10,14 @@ export interface SlotApiDto {
   available_slots: number;
 }
 
+export interface CreateTimeSlotRequest {
+  start_time: ApiUtcIsoString;
+  end_time: ApiUtcIsoString;
+  capacity: number;
+}
+
+export type UpdateTimeSlotCapacityAction = 'increase' | 'decrease';
+
 export interface BookingApiDto {
   id: string;
   user_id?: string | null;

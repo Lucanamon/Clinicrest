@@ -30,6 +30,15 @@ export class DashboardLayoutComponent {
     return profile?.profileImageUrl?.trim() || null;
   }
 
+  get canAccessBooking(): boolean {
+    const role = this.auth.getRole();
+    return role === 'Doctor' || role === 'Administrator' || role === 'RootAdmin';
+  }
+
+  get isGuest(): boolean {
+    return this.auth.isGuest();
+  }
+
   goToProfile(): void {
     void this.router.navigateByUrl('/profile');
   }

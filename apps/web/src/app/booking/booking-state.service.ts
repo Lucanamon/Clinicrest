@@ -5,7 +5,7 @@ import { catchError, finalize, map, tap } from 'rxjs/operators';
 import { skipGlobalErrorAlert } from '../interceptors/http-context.tokens';
 import { AuthService } from '../services/auth';
 import { environment } from '../../environments/environment';
-import type { BookingApiDto, PhoneBookingApiDto, SlotApiDto } from './booking-api.types';
+import type { BookingApiDto, CreateTimeSlotRequest, PhoneBookingApiDto, SlotApiDto, UpdateTimeSlotCapacityAction } from './booking-api.types';
 
 function utcTodayYmd(): string {
   const now = new Date();
@@ -97,6 +97,9 @@ export class BookingStateService {
   private readonly _loading = signal(false);
   private readonly _listError = signal<string | null>(null);
   private readonly _bookingError = signal<string | null>(null);
+  private readonly _slotCreateError = signal<string | null>(null);
+  private readonly _creatingSlot = signal(false);
+  private readonly _capacityAdjustingSlotId = signal<string | null>(null);
   private readonly _bookingSlotId = signal<string | null>(null);
   private readonly _phoneBookings = signal<PhoneBookingApiDto[]>([]);
   private readonly _phoneBookingsLoading = signal(false);
@@ -108,6 +111,9 @@ export class BookingStateService {
   readonly loading = this._loading.asReadonly();
   readonly listError = this._listError.asReadonly();
   readonly bookingError = this._bookingError.asReadonly();
+  readonly slotCreateError = this._slotCreateError.asReadonly();
+  readonly creatingSlot = this._creatingSlot.asReadonly();
+  readonly capacityAdjustingSlotId = this._capacityAdjustingSlotId.asReadonly();
   readonly bookingSlotId = this._bookingSlotId.asReadonly();
   readonly phoneBookings = this._phoneBookings.asReadonly();
   readonly phoneBookingsLoading = this._phoneBookingsLoading.asReadonly();
@@ -122,6 +128,10 @@ export class BookingStateService {
 
   resetBookingError(): void {
     this._bookingError.set(null);
+  }
+
+  resetSlotCreateError(): void {
+    this._slotCreateError.set(null);
   }
 
   clearPhoneBookings(): void {
@@ -209,6 +219,72 @@ export class BookingStateService {
         next: (rows) => this._slots.set(rows),
         error: (err: unknown) => this._listError.set(parseApiError(err)),
       });
+  }
+
+  loadAllSlots(options?: { silent?: boolean }): void {
+    const silent = options?.silent ?? false;
+    if (!silent) {
+      this._loading.set(true);
+    }
+    this._listError.set(null);
+
+    this.http
+      .get<unknown>(`${environment.apiUrl}/slots`, {
+        responseType: 'json',
+        context: httpAlertContext(),
+      })
+      .pipe(
+        map((body) => {
+          if (!Array.isArray(body)) {
+            throw new Error('Slots API returned invalid JSON (expected a JSON array of slots).');
+          }
+          return body as SlotApiDto[];
+        }),
+        catchError((err: unknown) => throwError(() => normalizeSlotsLoadError(err))),
+        finalize(() => {
+          if (!silent) {
+            this._loading.set(false);
+          }
+        }),
+      )
+      .subscribe({
+        next: (rows) => this._slots.set(rows),
+        error: (err: unknown) => this._listError.set(parseApiError(err)),
+      });
+  }
+
+  createSlot(payload: CreateTimeSlotRequest): Observable<SlotApiDto> {
+    this._slotCreateError.set(null);
+    this._creatingSlot.set(true);
+
+    return this.http
+      .post<SlotApiDto>(`${environment.apiUrl}/time-slots`, payload, { context: httpAlertContext() })
+      .pipe(
+        tap(() => this.loadAllSlots({ silent: true })),
+        catchError((err: unknown) => {
+          this._slotCreateError.set(parseApiError(err));
+          return throwError(() => err);
+        }),
+        finalize(() => this._creatingSlot.set(false)),
+      );
+  }
+
+  updateSlotCapacity(slotId: string, action: UpdateTimeSlotCapacityAction): Observable<SlotApiDto> {
+    this._slotCreateError.set(null);
+    this._capacityAdjustingSlotId.set(slotId);
+
+    return this.http
+      .patch<SlotApiDto>(`${environment.apiUrl}/time-slots/${slotId}/capacity`, { action }, { context: httpAlertContext() })
+      .pipe(
+        tap((updated) => {
+          this._slots.update((list) => list.map((slot) => (slot.id === updated.id ? updated : slot)));
+        }),
+        catchError((err: unknown) => {
+          this._slotCreateError.set(parseApiError(err));
+          return throwError(() => err);
+        }),
+        finalize(() => this._capacityAdjustingSlotId.set(null)),
+      );
   }
 
   /**
