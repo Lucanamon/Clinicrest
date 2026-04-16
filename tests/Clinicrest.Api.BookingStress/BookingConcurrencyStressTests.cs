@@ -210,7 +210,8 @@ public sealed class BookingStressFixture : IAsyncLifetime
         """
         CREATE TABLE IF NOT EXISTS bookings (
             id uuid PRIMARY KEY,
-            user_id uuid NOT NULL,
+            user_id uuid,
+            phone_number text,
             slot_id uuid NOT NULL REFERENCES time_slots(id) ON DELETE RESTRICT,
             status text NOT NULL,
             created_at timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -223,7 +224,12 @@ public sealed class BookingStressFixture : IAsyncLifetime
         """
         CREATE UNIQUE INDEX IF NOT EXISTS ux_bookings_user_slot_active
             ON bookings(user_id, slot_id)
-            WHERE status = 'active';
+            WHERE status = 'active' AND user_id IS NOT NULL;
+        """,
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_bookings_phone_slot_active
+            ON bookings(phone_number, slot_id)
+            WHERE status = 'active' AND phone_number IS NOT NULL;
         """
     ];
 }

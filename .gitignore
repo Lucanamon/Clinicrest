@@ -4353,3 +4353,7 @@ apps/api/obj/Debug/net8.0/staticwebassets.build.endpoints.json
 apps/api/obj/Debug/net8.0/staticwebassets.build.json.cache
 apps/api/obj/Debug/net8.0/swae.build.ex.cache
 node_modules
+apps/api/Infrastructure/Persistence/Migrations/20260414213733_GuestBookingPhoneNumber.cs
+apps/api/Infrastructure/Persistence/Migrations/20260414213733_GuestBookingPhoneNumber.Designer.cs
+apps/api/Infrastructure/Persistence/Migrations/20260415184040_EnforceBookingPhoneValidation.cs
+apps/api/Infrastructure/Persistence/Migrations/20260415184040_EnforceBookingPhoneValidation.Designer.cs

@@ -3,6 +3,12 @@
     <div>
       <h1>Book a slot</h1>
       <p class="muted">Times are shown in your local timezone. Availability comes from the server.</p>
+      @if (guestPhone) {
+        <p class="muted guest-hint" role="status">
+          Guest booking as <strong>{{ guestPhone }}</strong>. Need a different number?
+          <a routerLink="/register" class="inline-link">Register again</a>.
+        </p>
+      }
     </div>
     <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="booking.loading()">
       Refresh
@@ -22,6 +28,71 @@
       <button type="button" class="linkish" (click)="booking.resetBookingError()">Dismiss</button>
     </div>
   }
+
+  <section class="card tracked-bookings">
+    <h2>My bookings</h2>
+    @if (!guestPhone) {
+      <p class="muted">Enter your phone number to track and cancel your bookings.</p>
+      <form class="phone-track-form" (ngSubmit)="applyPhone()">
+        <input
+          type="tel"
+          inputmode="numeric"
+          name="phoneInput"
+          [(ngModel)]="enteredPhone"
+          placeholder="e.g. 08123456789"
+        />
+        <button type="submit" class="btn-secondary">Track bookings</button>
+      </form>
+    } @else {
+      @if (booking.phoneBookingsError()) {
+        <div class="banner banner--error" role="alert">
+          <span>{{ booking.phoneBookingsError() }}</span>
+          <button type="button" class="linkish" (click)="booking.loadBookingsByPhone(guestPhone)" [disabled]="booking.phoneBookingsLoading()">
+            Retry
+          </button>
+        </div>
+      }
+
+      @if (booking.phoneBookingsLoading()) {
+        <p class="muted" aria-live="polite">Loading your bookings…</p>
+      }
+
+      @if (!booking.phoneBookingsLoading() && booking.phoneBookings().length === 0 && !booking.phoneBookingsError()) {
+        <p class="muted">No bookings found for this phone number.</p>
+      }
+
+      @if (booking.phoneBookings().length > 0) {
+        <ul class="tracked-booking-list" role="list">
+          @for (item of booking.phoneBookings(); track item.id) {
+            <li class="slot-card">
+              <div class="slot-card__time">
+                <span class="label">Date</span>
+                <strong>{{ item.start_time | utcToLocal: 'mediumDate' }}</strong>
+                <span class="muted">{{ item.start_time | utcToLocal: 'HH:mm' }}-{{ item.end_time | utcToLocal: 'HH:mm' }}</span>
+              </div>
+              <div class="slot-card__meta">
+                <span>Status: <strong [class.status-cancelled]="item.status === 'cancelled'">{{ item.status }}</strong></span>
+              </div>
+              <div class="slot-card__actions">
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  (click)="cancelBooking(item.id)"
+                  [disabled]="item.status !== 'active' || booking.cancelBookingId() !== null"
+                >
+                  @if (booking.cancelBookingId() === item.id) {
+                    Cancelling…
+                  } @else {
+                    Cancel
+                  }
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    }
+  </section>
 
   <section class="toolbar card">
     <label class="field">

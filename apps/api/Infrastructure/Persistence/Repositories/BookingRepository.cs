@@ -12,13 +12,17 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
 {
     private const int MaxSerializationRetries = 5;
 
-    public async Task<BookingResult> CreateAsync(Guid userId, Guid slotId, CancellationToken cancellationToken = default)
+    public async Task<BookingResult> CreateAsync(
+        Guid? userId,
+        string? phoneNumber,
+        Guid slotId,
+        CancellationToken cancellationToken = default)
     {
         for (var attempt = 1; ; attempt++)
         {
             try
             {
-                return await CreateSingleAttemptAsync(userId, slotId, cancellationToken);
+                return await CreateSingleAttemptAsync(userId, phoneNumber, slotId, cancellationToken);
             }
             catch (Exception ex) when (IsTransientPostgres(ex) && attempt < MaxSerializationRetries)
             {
@@ -29,7 +33,8 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
     }
 
     private async Task<BookingResult> CreateSingleAttemptAsync(
-        Guid userId,
+        Guid? userId,
+        string? phoneNumber,
         Guid slotId,
         CancellationToken cancellationToken)
     {
@@ -52,11 +57,17 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
                 return Failed("Slot not found.");
             }
 
-            var existingActive = await dbContext.Bookings
-                .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    b => b.UserId == userId && b.SlotId == slotId && b.Status == "active",
-                    cancellationToken);
+            var existingActive = userId.HasValue
+                ? await dbContext.Bookings
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(
+                        b => b.UserId == userId && b.SlotId == slotId && b.Status == "active",
+                        cancellationToken)
+                : await dbContext.Bookings
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(
+                        b => b.PhoneNumber == phoneNumber && b.SlotId == slotId && b.Status == "active",
+                        cancellationToken);
 
             if (existingActive is not null)
             {
@@ -84,6 +95,7 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
+                PhoneNumber = phoneNumber,
                 SlotId = slotId,
                 Status = "active",
                 CreatedAt = nowUtc
@@ -106,11 +118,17 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             await transaction.RollbackAsync(cancellationToken);
             dbContext.ChangeTracker.Clear();
 
-            var existing = await dbContext.Bookings
-                .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    b => b.UserId == userId && b.SlotId == slotId && b.Status == "active",
-                    cancellationToken);
+            var existing = userId.HasValue
+                ? await dbContext.Bookings
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(
+                        b => b.UserId == userId && b.SlotId == slotId && b.Status == "active",
+                        cancellationToken)
+                : await dbContext.Bookings
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(
+                        b => b.PhoneNumber == phoneNumber && b.SlotId == slotId && b.Status == "active",
+                        cancellationToken);
 
             if (existing is not null)
             {
@@ -210,5 +228,27 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             IsSuccess = false,
             Error = error
         };
+    }
+
+    public async Task<IReadOnlyList<PhoneBookingDto>> GetByPhoneAsync(
+        string phoneNumber,
+        CancellationToken cancellationToken = default)
+    {
+        var rows = await (
+            from b in dbContext.Bookings.AsNoTracking()
+            join s in dbContext.TimeSlots.AsNoTracking() on b.SlotId equals s.Id
+            where b.PhoneNumber == phoneNumber
+            orderby s.StartTime descending
+            select new PhoneBookingDto
+            {
+                Id = b.Id,
+                SlotId = b.SlotId,
+                StartTime = UtcInstant.AsUtcDateTimeOffset(s.StartTime),
+                EndTime = UtcInstant.AsUtcDateTimeOffset(s.EndTime),
+                Status = b.Status
+            })
+            .ToListAsync(cancellationToken);
+
+        return rows;
     }
 }

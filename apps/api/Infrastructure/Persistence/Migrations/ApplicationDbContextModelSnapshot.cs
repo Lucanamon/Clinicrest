@@ -181,6 +181,11 @@ namespace api.Infrastructure.Persistence.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("NOW()");
 
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(10)
+                        .HasColumnType("text")
+                        .HasColumnName("phone_number");
+
                     b.Property<Guid>("SlotId")
                         .HasColumnType("uuid")
                         .HasColumnName("slot_id");
@@ -190,7 +195,7 @@ namespace api.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("status");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
@@ -199,13 +204,22 @@ namespace api.Infrastructure.Persistence.Migrations
                     b.HasIndex("SlotId")
                         .HasDatabaseName("ix_bookings_slot_id");
 
+                    b.HasIndex("PhoneNumber", "SlotId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_bookings_phone_slot_active")
+                        .HasFilter("\"status\" = 'active' AND phone_number IS NOT NULL");
+
                     b.HasIndex("UserId", "SlotId")
                         .IsUnique()
                         .HasDatabaseName("ux_bookings_user_slot_active")
-                        .HasFilter("\"status\" = 'active'");
+                        .HasFilter("\"status\" = 'active' AND user_id IS NOT NULL");
 
                     b.ToTable("bookings", null, t =>
                         {
+                            t.HasCheckConstraint("chk_bookings_identity_required", "user_id IS NOT NULL OR phone_number IS NOT NULL");
+
+                            t.HasCheckConstraint("chk_bookings_phone_format", "phone_number IS NULL OR phone_number ~ '^[0-9]{9,10}$'");
+
                             t.HasCheckConstraint("chk_bookings_status", "\"status\" IN ('active', 'cancelled')");
                         });
                 });

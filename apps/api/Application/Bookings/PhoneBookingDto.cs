@@ -2,23 +2,20 @@ using System.Text.Json.Serialization;
 
 namespace api.Application.Bookings;
 
-public class BookingDto
+public class PhoneBookingDto
 {
     [JsonPropertyName("id")]
     public Guid Id { get; set; }
 
-    [JsonPropertyName("user_id")]
-    public Guid? UserId { get; set; }
-
-    [JsonPropertyName("phone_number")]
-    public string? PhoneNumber { get; set; }
-
     [JsonPropertyName("slot_id")]
     public Guid SlotId { get; set; }
 
+    [JsonPropertyName("start_time")]
+    public DateTimeOffset StartTime { get; set; }
+
+    [JsonPropertyName("end_time")]
+    public DateTimeOffset EndTime { get; set; }
+
     [JsonPropertyName("status")]
     public string Status { get; set; } = "active";
-
-    [JsonPropertyName("created_at")]
-    public DateTimeOffset CreatedAt { get; set; }
 }

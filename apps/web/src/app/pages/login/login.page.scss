@@ -82,3 +82,26 @@ button:disabled {
   color: #b42318;
   font-size: 0.85rem;
 }
+
+.secondary-option {
+  margin-top: 0.45rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e2e8f0;
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+}
+
+.secondary-option__text {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.secondary-option__link {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0369a1;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

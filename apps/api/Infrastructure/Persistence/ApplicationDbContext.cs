@@ -298,7 +298,16 @@ public class ApplicationDbContext : DbContext
         {
             entity.ToTable(
                 "bookings",
-                t => t.HasCheckConstraint("chk_bookings_status", "\"status\" IN ('active', 'cancelled')"));
+                t =>
+                {
+                    t.HasCheckConstraint("chk_bookings_status", "\"status\" IN ('active', 'cancelled')");
+                    t.HasCheckConstraint(
+                        "chk_bookings_identity_required",
+                        "user_id IS NOT NULL OR phone_number IS NOT NULL");
+                    t.HasCheckConstraint(
+                        "chk_bookings_phone_format",
+                        "phone_number IS NULL OR phone_number ~ '^[0-9]{9,10}$'");
+                });
 
             entity.HasKey(b => b.Id);
 
@@ -306,8 +315,12 @@ public class ApplicationDbContext : DbContext
                 .HasColumnName("id");
 
             entity.Property(b => b.UserId)
-                .IsRequired()
                 .HasColumnName("user_id");
+
+            entity.Property(b => b.PhoneNumber)
+                .HasColumnName("phone_number")
+                .HasColumnType("text")
+                .HasMaxLength(10);
 
             entity.Property(b => b.SlotId)
                 .IsRequired()
@@ -335,7 +348,12 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(b => new { b.UserId, b.SlotId })
                 .IsUnique()
                 .HasDatabaseName("ux_bookings_user_slot_active")
-                .HasFilter("\"status\" = 'active'");
+                .HasFilter("\"status\" = 'active' AND user_id IS NOT NULL");
+
+            entity.HasIndex(b => new { b.PhoneNumber, b.SlotId })
+                .IsUnique()
+                .HasDatabaseName("ux_bookings_phone_slot_active")
+                .HasFilter("\"status\" = 'active' AND phone_number IS NOT NULL");
         });
     }
 

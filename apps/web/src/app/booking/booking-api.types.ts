@@ -12,8 +12,17 @@ export interface SlotApiDto {
 
 export interface BookingApiDto {
   id: string;
-  user_id: string;
+  user_id?: string | null;
+  phone_number?: string | null;
   slot_id: string;
   status: string;
   created_at: ApiUtcIsoString;
+}
+
+export interface PhoneBookingApiDto {
+  id: string;
+  slot_id: string;
+  start_time: ApiUtcIsoString;
+  end_time: ApiUtcIsoString;
+  status: 'active' | 'cancelled' | string;
 }

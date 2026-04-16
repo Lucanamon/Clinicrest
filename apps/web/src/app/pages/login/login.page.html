@@ -23,6 +23,13 @@
       <button type="submit" [disabled]="loading()">
         {{ loading() ? 'Signing in...' : 'Sign in' }}
       </button>
+
+      <div class="secondary-option">
+        <p class="secondary-option__text">Book appointment without account</p>
+        <a routerLink="/register" class="secondary-option__link">
+          Continue as Guest / Register Booking
+        </a>
+      </div>
     </form>
   </section>
 </main>

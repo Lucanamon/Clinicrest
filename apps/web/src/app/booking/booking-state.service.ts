@@ -5,7 +5,7 @@ import { catchError, finalize, map, tap } from 'rxjs/operators';
 import { skipGlobalErrorAlert } from '../interceptors/http-context.tokens';
 import { AuthService } from '../services/auth';
 import { environment } from '../../environments/environment';
-import type { BookingApiDto, SlotApiDto } from './booking-api.types';
+import type { BookingApiDto, PhoneBookingApiDto, SlotApiDto } from './booking-api.types';
 
 function utcTodayYmd(): string {
   const now = new Date();
@@ -26,6 +26,9 @@ function looksLikeHtmlDocument(s: string): boolean {
 
 function parseApiError(error: unknown): string {
   if (error instanceof HttpErrorResponse) {
+    if (error.status === 0) {
+      return 'Network error. Check your connection and try again.';
+    }
     const payload = error.error as { message?: string } | string | null | undefined;
     if (typeof payload === 'string' && payload.trim() !== '') {
       if (looksLikeHtmlDocument(payload)) {
@@ -40,7 +43,7 @@ function parseApiError(error: unknown): string {
       return payload.message;
     }
     if (error.status === 409) {
-      return 'This slot is full. Another request may have taken the last seat.';
+      return 'This booking could not be completed. The slot may be full, or the start time may have already passed.';
     }
     if (error.status === 400) {
       return 'Booking was rejected. The slot may be full, already started, or invalid.';
@@ -95,6 +98,10 @@ export class BookingStateService {
   private readonly _listError = signal<string | null>(null);
   private readonly _bookingError = signal<string | null>(null);
   private readonly _bookingSlotId = signal<string | null>(null);
+  private readonly _phoneBookings = signal<PhoneBookingApiDto[]>([]);
+  private readonly _phoneBookingsLoading = signal(false);
+  private readonly _phoneBookingsError = signal<string | null>(null);
+  private readonly _cancelBookingId = signal<string | null>(null);
   private readonly _selectedDateYmd = signal<string>(utcTodayYmd());
 
   readonly slots = this._slots.asReadonly();
@@ -102,6 +109,10 @@ export class BookingStateService {
   readonly listError = this._listError.asReadonly();
   readonly bookingError = this._bookingError.asReadonly();
   readonly bookingSlotId = this._bookingSlotId.asReadonly();
+  readonly phoneBookings = this._phoneBookings.asReadonly();
+  readonly phoneBookingsLoading = this._phoneBookingsLoading.asReadonly();
+  readonly phoneBookingsError = this._phoneBookingsError.asReadonly();
+  readonly cancelBookingId = this._cancelBookingId.asReadonly();
   readonly selectedDateYmd = this._selectedDateYmd.asReadonly();
 
   setSelectedDateYmd(value: string): void {
@@ -111,6 +122,55 @@ export class BookingStateService {
 
   resetBookingError(): void {
     this._bookingError.set(null);
+  }
+
+  clearPhoneBookings(): void {
+    this._phoneBookings.set([]);
+    this._phoneBookingsError.set(null);
+    this._cancelBookingId.set(null);
+    this._phoneBookingsLoading.set(false);
+  }
+
+  loadBookingsByPhone(phoneNumber: string): void {
+    const phone = phoneNumber.trim();
+    if (!phone) {
+      this._phoneBookings.set([]);
+      this._phoneBookingsError.set('phone query parameter is required.');
+      return;
+    }
+
+    this._phoneBookingsLoading.set(true);
+    this._phoneBookingsError.set(null);
+
+    this.http
+      .get<PhoneBookingApiDto[]>(`${environment.apiUrl}/bookings`, {
+        params: { phoneNumber: phone },
+        context: httpAlertContext(),
+      })
+      .pipe(finalize(() => this._phoneBookingsLoading.set(false)))
+      .subscribe({
+        next: (rows) => this._phoneBookings.set(rows),
+        error: (err: unknown) => this._phoneBookingsError.set(parseApiError(err)),
+      });
+  }
+
+  cancelBooking(bookingId: string, phoneNumber: string): Observable<unknown> {
+    this._cancelBookingId.set(bookingId);
+    this._phoneBookingsError.set(null);
+
+    return this.http
+      .delete(`${environment.apiUrl}/bookings/${bookingId}`, { context: httpAlertContext() })
+      .pipe(
+        tap(() => {
+          this.loadBookingsByPhone(phoneNumber);
+          this.loadSlots({ silent: true });
+        }),
+        catchError((err: unknown) => {
+          this._phoneBookingsError.set(parseApiError(err));
+          return throwError(() => err);
+        }),
+        finalize(() => this._cancelBookingId.set(null)),
+      );
   }
 
   loadSlots(options?: { silent?: boolean }): void {
@@ -152,14 +212,17 @@ export class BookingStateService {
   }
 
   /**
-   * Books a slot for the signed-in user. Applies an optimistic list update, then refreshes from the API.
+   * Books a slot for the signed-in user, or as a guest when `phoneNumber` is provided and there is no session.
+   * Applies an optimistic list update, then refreshes from the API.
    * On failure, reverts the optimistic change and reloads slots from the server.
    */
-  bookSlot(slotId: string): Observable<BookingApiDto> {
+  bookSlot(slotId: string, options?: { phoneNumber?: string }): Observable<BookingApiDto> {
     const userId = this.auth.getUserId();
-    if (!userId) {
-      this._bookingError.set('You must be signed in to book.');
-      return throwError(() => new Error('You must be signed in to book.'));
+    const phone = options?.phoneNumber?.trim();
+
+    if (!userId && !phone) {
+      this._bookingError.set('You must be signed in to book, or open Guest registration to enter your phone number.');
+      return throwError(() => new Error('Missing user or phone for booking.'));
     }
 
     const slot = this._slots().find((s) => s.id === slotId);
@@ -174,10 +237,14 @@ export class BookingStateService {
 
     this.applyOptimistic(slotId);
 
+    const body = userId
+      ? { user_id: userId, slot_id: slotId }
+      : { phoneNumber: phone!, slotId };
+
     return this.http
       .post<BookingApiDto>(
         `${environment.apiUrl}/bookings`,
-        { user_id: userId, slot_id: slotId },
+        body,
         { context: httpAlertContext() },
       )
       .pipe(

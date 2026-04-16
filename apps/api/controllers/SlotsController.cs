@@ -1,6 +1,5 @@
 using api.Application.Abstractions;
 using api.Application.Slots;
-using api.Domain;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
@@ -8,10 +7,10 @@ using System.Globalization;
 namespace api.Controllers;
 
 [ApiController]
-[Authorize(Roles = Roles.ClinicalAll)]
 [Route("api/[controller]")]
 public class SlotsController(ISlotService slotService) : ControllerBase
 {
+    [AllowAnonymous]
     [HttpGet("/api/slots")]
     public async Task<ActionResult<IReadOnlyList<SlotDto>>> GetSlots(
         [FromQuery] SlotQueryParams query,
