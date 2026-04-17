@@ -10,6 +10,7 @@ namespace api.Infrastructure.Persistence.Repositories;
 public class BookingRepository(ApplicationDbContext dbContext) : IBookingRepository
 {
     private const int MaxSerializationRetries = 5;
+    private const string DuplicateBookingError = "DuplicateBooking";
 
     public async Task<BookingResult> CreateAsync(
         long slotId,
@@ -40,6 +41,26 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
         await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
         try
         {
+            var normalizedPatientName = patientName.Trim();
+            var normalizedPhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim();
+
+            if (!string.IsNullOrWhiteSpace(normalizedPhoneNumber))
+            {
+                var hasDuplicate = await dbContext.Bookings.AsNoTracking().AnyAsync(
+                    booking =>
+                        booking.Status != BookingStatus.Cancelled &&
+                        booking.PatientName.ToLower() == normalizedPatientName.ToLower() &&
+                        booking.PhoneNumber != null &&
+                        booking.PhoneNumber.ToLower() == normalizedPhoneNumber.ToLower(),
+                    cancellationToken);
+
+                if (hasDuplicate)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return Failed(DuplicateBookingError);
+                }
+            }
+
             var rows = await dbContext.Database.ExecuteSqlInterpolatedAsync(
                 $"""
                 UPDATE slots
@@ -59,8 +80,8 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             var booking = new Booking
             {
                 SlotId = slotId,
-                PatientName = patientName,
-                PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim(),
+                PatientName = normalizedPatientName,
+                PhoneNumber = normalizedPhoneNumber,
                 Status = BookingStatus.Active,
                 CreatedAt = DateTime.UtcNow
             };

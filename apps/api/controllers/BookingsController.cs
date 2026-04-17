@@ -53,6 +53,11 @@ public class BookingsController(
                 return Conflict(new { message = result.Error });
             }
 
+            if (string.Equals(result.Error, "DuplicateBooking", StringComparison.Ordinal))
+            {
+                return Conflict(new { message = "A booking request for this name and phone number already exists." });
+            }
+
             return BadRequest(new { message = result.Error });
         }
 

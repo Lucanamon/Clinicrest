@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -115,6 +116,10 @@ export class RegisterPage implements OnInit, OnDestroy {
       return;
     }
 
+    if (this.isSubmitting) {
+      return;
+    }
+
     if (!this.canSubmitRequest()) {
       this.form.markAllAsTouched();
       if (!this.selectedSlotId()) {
@@ -144,8 +149,13 @@ export class RegisterPage implements OnInit, OnDestroy {
         this.showSuccessFeedback();
         this.isSubmitting = false;
       },
-      error: () => {
-        this.submitError = 'We could not send your request. Please try again.';
+      error: (error: HttpErrorResponse) => {
+        if (error.status === 409) {
+          this.submitError =
+            'It looks like you already have a pending request. Please wait for our staff to contact you.';
+        } else {
+          this.submitError = 'We could not send your request. Please try again.';
+        }
         this.isSubmitting = false;
       },
     });

@@ -12,30 +12,35 @@
       <p class="guest-mode-note">Guest mode</p>
     } @else {
       <nav class="nav-links" aria-label="Main navigation">
-        <a routerLink="/patients" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        <a class="nav-management" routerLink="/patients" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
           <span class="nav-label">Patients</span>
         </a>
-        <a routerLink="/appointments" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        <a
+          class="nav-operational"
+          routerLink="/appointments"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+        >
           <span class="nav-label">Appointments</span>
         </a>
-        <a routerLink="/schedule" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          <span class="material-symbols-outlined nav-icon" aria-hidden="true">calendar_today</span>
+        <a class="nav-operational" routerLink="/schedule" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
           <span class="nav-label">Schedule</span>
         </a>
         @if (canAccessBooking) {
-          <a routerLink="/booking" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <a class="nav-operational" routerLink="/booking" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
             <span class="nav-label">Booking</span>
           </a>
         }
-        <a routerLink="/backlog" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        <a class="nav-management" routerLink="/backlog" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
           <span class="nav-label">Backlog</span>
         </a>
         @if (auth.isRootAdmin()) {
-          <a routerLink="/users" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <a class="nav-management" routerLink="/users" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
             <span class="nav-label">Users</span>
           </a>
-          <a routerLink="/audit-logs" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <a class="nav-admin" routerLink="/audit-logs" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
             <span class="nav-label">Audit log</span>
+            <span class="nav-admin-badge" aria-hidden="true">SECURE</span>
           </a>
         }
       </nav>

@@ -60,12 +60,13 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #334155;
+  color: #475569;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.92rem;
   padding: 0.65rem 0.8rem;
   border-radius: 10px;
+  border-left: 4px solid transparent;
 }
 
 .nav-icon {
@@ -78,8 +79,70 @@
 }
 
 .nav-links a.active {
-  background: #e0f2fe;
-  color: #075985;
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.nav-links a.nav-operational {
+  color: #0056b3;
+  font-weight: 600;
+}
+
+.nav-links a.nav-operational:hover {
+  background: #eaf2ff;
+}
+
+.nav-links a.nav-operational.active {
+  background: #0056b3;
+  color: #ffffff;
+  border-left-color: #0b61c9;
+}
+
+.nav-links a.nav-management {
+  color: #374151;
+  font-weight: 500;
+}
+
+.nav-links a.nav-management:hover,
+.nav-links a.nav-management.active {
+  background: #f8f9fa;
+  color: #111827;
+  font-weight: 600;
+}
+
+.nav-links a.nav-admin {
+  color: #8a6a00;
+  font-weight: 600;
+}
+
+.nav-links a.nav-admin:hover {
+  background: #fff9eb;
+  color: #6f5200;
+}
+
+.nav-links a.nav-admin.active {
+  background: #fff3d6;
+  color: #5c4300;
+  border-left-color: #a36e00;
+}
+
+.nav-admin-badge {
+  margin-left: auto;
+  border: 1px solid #b45309;
+  border-radius: 999px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  color: #92400e;
+  background: #ffedd5;
+}
+
+.nav-links a.nav-admin.active .nav-admin-badge {
+  border-color: #8a6a00;
+  color: #5c4300;
+  background: #ffe7b3;
 }
 
 .main-panel {

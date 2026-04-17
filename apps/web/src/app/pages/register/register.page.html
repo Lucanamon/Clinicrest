@@ -188,7 +188,7 @@
             }
           </div>
 
-          <button type="submit" class="btn-primary" [disabled]="!canSubmitRequest()">
+          <button type="submit" class="btn-primary" [disabled]="isSubmitting || !canSubmitRequest()">
             @if (isSubmitting || booking.bookingSlotId()) {
               Sending request...
             } @else {
