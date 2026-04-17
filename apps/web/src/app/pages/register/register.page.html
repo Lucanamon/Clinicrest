@@ -6,7 +6,7 @@
         <p class="muted">Enter your phone number to continue to booking request.</p>
       } @else {
         <h1>Guest booking request</h1>
-        <p class="muted">Pick an available doctor slot, enter your phone number, and confirm.</p>
+        <p class="muted">Pick an available slot, enter the patient name, and confirm.</p>
       }
     </div>
     @if (!isRegisterEntry) {
@@ -109,23 +109,20 @@
         </p>
 
         <div class="field">
-          <label for="reg-phone">Phone number</label>
+          <label for="reg-patient">Patient name</label>
           <input
-            id="reg-phone"
+            id="reg-patient"
             type="text"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            autocomplete="tel"
-            formControlName="phoneNumber"
-            (input)="onPhoneInput($event)"
-            placeholder="Digits only"
-            [attr.aria-invalid]="form.controls.phoneNumber.invalid && form.controls.phoneNumber.touched"
+            autocomplete="name"
+            formControlName="patientName"
+            placeholder="Full name"
+            [attr.aria-invalid]="form.controls.patientName.invalid && form.controls.patientName.touched"
           />
-          @if (form.controls.phoneNumber.touched && form.controls.phoneNumber.hasError('required')) {
-            <span class="field-error" role="alert">Phone number is required.</span>
+          @if (form.controls.patientName.touched && form.controls.patientName.hasError('required')) {
+            <span class="field-error" role="alert">Patient name is required.</span>
           }
-          @if (form.controls.phoneNumber.touched && form.controls.phoneNumber.hasError('pattern')) {
-            <span class="field-error" role="alert">Phone number must contain digits only.</span>
+          @if (form.controls.patientName.touched && form.controls.patientName.hasError('maxlength')) {
+            <span class="field-error" role="alert">Name is too long.</span>
           }
         </div>
 

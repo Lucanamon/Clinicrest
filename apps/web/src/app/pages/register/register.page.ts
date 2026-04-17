@@ -29,7 +29,7 @@ export class RegisterPage implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   readonly booking = inject(BookingStateService);
-  selectedSlotId: string | null = null;
+  selectedSlotId: number | null = null;
   selectedSlotSummary: string | null = null;
   successMessage: string | null = null;
   slotsJustUpdated = false;
@@ -38,7 +38,8 @@ export class RegisterPage implements OnInit, OnDestroy {
   backPhoneQuery: string | null = null;
 
   readonly form = this.fb.nonNullable.group({
-    phoneNumber: ['', [Validators.required, Validators.pattern(/^[0-9]*$/)]]
+    phoneNumber: [''],
+    patientName: [''],
   });
 
   ngOnInit(): void {
@@ -48,6 +49,8 @@ export class RegisterPage implements OnInit, OnDestroy {
     if (storedPhone) {
       this.form.controls.phoneNumber.setValue(this.normalizePhoneDigits(storedPhone));
     }
+
+    this.applyFormValidatorsForRoute();
 
     this.route.queryParamMap.subscribe((params) => {
       const phoneFromQuery = params.get('phone')?.trim() || null;
@@ -62,6 +65,20 @@ export class RegisterPage implements OnInit, OnDestroy {
     if (!this.isRegisterEntry) {
       this.booking.loadAllSlots();
     }
+  }
+
+  private applyFormValidatorsForRoute(): void {
+    const phone = this.form.controls.phoneNumber;
+    const patient = this.form.controls.patientName;
+    if (this.isRegisterEntry) {
+      phone.setValidators([Validators.required, Validators.pattern(/^[0-9]*$/)]);
+      patient.clearValidators();
+    } else {
+      phone.clearValidators();
+      patient.setValidators([Validators.required, Validators.maxLength(500)]);
+    }
+    phone.updateValueAndValidity({ emitEvent: false });
+    patient.updateValueAndValidity({ emitEvent: false });
   }
 
   ngOnDestroy(): void {
@@ -80,16 +97,15 @@ export class RegisterPage implements OnInit, OnDestroy {
       return;
     }
 
-    const { phoneNumber } = this.form.getRawValue();
-    const normalizedPhone = this.normalizePhoneDigits(phoneNumber);
+    const { patientName } = this.form.getRawValue();
+    const name = patientName.trim();
     this.booking.resetBookingError();
     this.successMessage = null;
     this.isSubmitting = true;
 
-    this.booking.bookSlot(this.selectedSlotId, { phoneNumber: normalizedPhone }).subscribe({
+    this.booking.bookSlot(this.selectedSlotId, name).subscribe({
       next: () => {
         this.booking.loadAllSlots();
-        this.storeGuestPhone(normalizedPhone);
         this.selectedSlotId = null;
         this.selectedSlotSummary = null;
         this.showSuccessFeedback();

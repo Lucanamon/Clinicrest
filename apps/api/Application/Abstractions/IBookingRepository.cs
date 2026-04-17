@@ -5,14 +5,9 @@ namespace api.Application.Abstractions;
 public interface IBookingRepository
 {
     Task<BookingResult> CreateAsync(
-        Guid? userId,
-        string? phoneNumber,
-        Guid slotId,
+        long slotId,
+        string patientName,
         CancellationToken cancellationToken = default);
 
-    Task<CancelBookingResult> CancelAsync(Guid bookingId, CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<PhoneBookingDto>> GetByPhoneAsync(
-        string phoneNumber,
-        CancellationToken cancellationToken = default);
+    Task<CancelBookingResult> CancelAsync(long bookingId, CancellationToken cancellationToken = default);
 }

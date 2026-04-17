@@ -37,7 +37,7 @@ public class SlotService(ISlotRepository slotRepository, ApplicationDbContext db
     }
 
     public async Task<(bool IsSuccess, string? Error, SlotDto? Slot)> UpdateCapacityAsync(
-        Guid slotId,
+        long slotId,
         string action,
         CancellationToken cancellationToken = default)
     {
@@ -90,7 +90,7 @@ public class SlotService(ISlotRepository slotRepository, ApplicationDbContext db
         }
     }
 
-    public async Task<(bool IsSuccess, string? Error)> DeleteAsync(Guid slotId, CancellationToken cancellationToken = default)
+    public async Task<(bool IsSuccess, string? Error)> DeleteAsync(long slotId, CancellationToken cancellationToken = default)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
         try
@@ -112,7 +112,7 @@ public class SlotService(ISlotRepository slotRepository, ApplicationDbContext db
                 .Where(b => b.SlotId == slotId)
                 .ExecuteDeleteAsync(cancellationToken);
 
-            dbContext.TimeSlots.Remove(slot);
+            dbContext.Slots.Remove(slot);
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return (true, null);
@@ -124,7 +124,7 @@ public class SlotService(ISlotRepository slotRepository, ApplicationDbContext db
         }
     }
 
-    private static SlotDto MapToDto(TimeSlot slot)
+    private static SlotDto MapToDto(Slot slot)
     {
         var capacity = Math.Max(slot.Capacity, 0);
         var bookedCount = Math.Clamp(slot.BookedCount, 0, capacity);

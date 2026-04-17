@@ -6,9 +6,9 @@ namespace api.Infrastructure.Persistence.Repositories;
 
 public class SlotRepository(ApplicationDbContext dbContext) : ISlotRepository
 {
-    public async Task<IReadOnlyList<TimeSlot>> GetAllAsync(DateOnly? date, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Slot>> GetAllAsync(DateOnly? date, CancellationToken cancellationToken = default)
     {
-        IQueryable<TimeSlot> query = dbContext.TimeSlots
+        IQueryable<Slot> query = dbContext.Slots
             .AsNoTracking();
 
         if (date.HasValue)
@@ -23,15 +23,14 @@ public class SlotRepository(ApplicationDbContext dbContext) : ISlotRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<TimeSlot> CreateAsync(
+    public async Task<Slot> CreateAsync(
         DateTime startTimeUtc,
         DateTime endTimeUtc,
         int capacity,
         CancellationToken cancellationToken = default)
     {
-        var slot = new TimeSlot
+        var slot = new Slot
         {
-            Id = Guid.NewGuid(),
             StartTime = DateTime.SpecifyKind(startTimeUtc, DateTimeKind.Utc),
             EndTime = DateTime.SpecifyKind(endTimeUtc, DateTimeKind.Utc),
             Capacity = capacity,
@@ -39,18 +38,18 @@ public class SlotRepository(ApplicationDbContext dbContext) : ISlotRepository
             CreatedAt = DateTime.UtcNow
         };
 
-        dbContext.TimeSlots.Add(slot);
+        dbContext.Slots.Add(slot);
         await dbContext.SaveChangesAsync(cancellationToken);
         return slot;
     }
 
-    public Task<TimeSlot?> GetForUpdateAsync(Guid slotId, CancellationToken cancellationToken = default)
+    public Task<Slot?> GetForUpdateAsync(long slotId, CancellationToken cancellationToken = default)
     {
-        return dbContext.TimeSlots
+        return dbContext.Slots
             .FromSqlInterpolated(
                 $"""
                 SELECT id, start_time, end_time, capacity, booked_count, created_at
-                FROM time_slots
+                FROM slots
                 WHERE id = {slotId}
                 FOR UPDATE
                 """)

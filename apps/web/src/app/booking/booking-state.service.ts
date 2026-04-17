@@ -3,9 +3,8 @@ import { inject, Injectable, signal } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
 import { catchError, finalize, map, tap } from 'rxjs/operators';
 import { skipGlobalErrorAlert } from '../interceptors/http-context.tokens';
-import { AuthService } from '../services/auth';
 import { environment } from '../../environments/environment';
-import type { BookingApiDto, CreateTimeSlotRequest, PhoneBookingApiDto, SlotApiDto, UpdateTimeSlotCapacityAction } from './booking-api.types';
+import type { BookingApiDto, CreateTimeSlotRequest, SlotApiDto, UpdateTimeSlotCapacityAction } from './booking-api.types';
 
 function utcTodayYmd(): string {
   const now = new Date();
@@ -43,10 +42,10 @@ function parseApiError(error: unknown): string {
       return payload.message;
     }
     if (error.status === 409) {
-      return 'This booking could not be completed. The slot may be full, or the start time may have already passed.';
+      return 'Slot Full';
     }
     if (error.status === 400) {
-      return 'Booking was rejected. The slot may be full, already started, or invalid.';
+      return 'Booking was rejected. Check your details and try again.';
     }
     const msg = typeof error.message === 'string' ? error.message : '';
     if (msg.includes('Http failure during parsing')) {
@@ -63,10 +62,6 @@ function parseApiError(error: unknown): string {
   return 'An unexpected error occurred.';
 }
 
-/**
- * When slots JSON parsing fails or the body is HTML, Angular surfaces an HttpErrorResponse.
- * Log the raw body when it is a string so misrouted /api traffic is easy to diagnose.
- */
 function normalizeSlotsLoadError(err: unknown): unknown {
   if (!(err instanceof HttpErrorResponse)) {
     return err;
@@ -91,7 +86,6 @@ function normalizeSlotsLoadError(err: unknown): unknown {
 @Injectable({ providedIn: 'root' })
 export class BookingStateService {
   private readonly http = inject(HttpClient);
-  private readonly auth = inject(AuthService);
 
   private readonly _slots = signal<SlotApiDto[]>([]);
   private readonly _loading = signal(false);
@@ -99,13 +93,9 @@ export class BookingStateService {
   private readonly _bookingError = signal<string | null>(null);
   private readonly _slotCreateError = signal<string | null>(null);
   private readonly _creatingSlot = signal(false);
-  private readonly _capacityAdjustingSlotId = signal<string | null>(null);
-  private readonly _deletingSlotId = signal<string | null>(null);
-  private readonly _bookingSlotId = signal<string | null>(null);
-  private readonly _phoneBookings = signal<PhoneBookingApiDto[]>([]);
-  private readonly _phoneBookingsLoading = signal(false);
-  private readonly _phoneBookingsError = signal<string | null>(null);
-  private readonly _cancelBookingId = signal<string | null>(null);
+  private readonly _capacityAdjustingSlotId = signal<number | null>(null);
+  private readonly _deletingSlotId = signal<number | null>(null);
+  private readonly _bookingSlotId = signal<number | null>(null);
   private readonly _selectedDateYmd = signal<string>(utcTodayYmd());
 
   readonly slots = this._slots.asReadonly();
@@ -117,10 +107,6 @@ export class BookingStateService {
   readonly capacityAdjustingSlotId = this._capacityAdjustingSlotId.asReadonly();
   readonly deletingSlotId = this._deletingSlotId.asReadonly();
   readonly bookingSlotId = this._bookingSlotId.asReadonly();
-  readonly phoneBookings = this._phoneBookings.asReadonly();
-  readonly phoneBookingsLoading = this._phoneBookingsLoading.asReadonly();
-  readonly phoneBookingsError = this._phoneBookingsError.asReadonly();
-  readonly cancelBookingId = this._cancelBookingId.asReadonly();
   readonly selectedDateYmd = this._selectedDateYmd.asReadonly();
 
   setSelectedDateYmd(value: string): void {
@@ -134,55 +120,6 @@ export class BookingStateService {
 
   resetSlotCreateError(): void {
     this._slotCreateError.set(null);
-  }
-
-  clearPhoneBookings(): void {
-    this._phoneBookings.set([]);
-    this._phoneBookingsError.set(null);
-    this._cancelBookingId.set(null);
-    this._phoneBookingsLoading.set(false);
-  }
-
-  loadBookingsByPhone(phoneNumber: string): void {
-    const phone = phoneNumber.trim();
-    if (!phone) {
-      this._phoneBookings.set([]);
-      this._phoneBookingsError.set('phone query parameter is required.');
-      return;
-    }
-
-    this._phoneBookingsLoading.set(true);
-    this._phoneBookingsError.set(null);
-
-    this.http
-      .get<PhoneBookingApiDto[]>(`${environment.apiUrl}/bookings`, {
-        params: { phoneNumber: phone },
-        context: httpAlertContext(),
-      })
-      .pipe(finalize(() => this._phoneBookingsLoading.set(false)))
-      .subscribe({
-        next: (rows) => this._phoneBookings.set(rows),
-        error: (err: unknown) => this._phoneBookingsError.set(parseApiError(err)),
-      });
-  }
-
-  cancelBooking(bookingId: string, phoneNumber: string): Observable<unknown> {
-    this._cancelBookingId.set(bookingId);
-    this._phoneBookingsError.set(null);
-
-    return this.http
-      .delete(`${environment.apiUrl}/bookings/${bookingId}`, { context: httpAlertContext() })
-      .pipe(
-        tap(() => {
-          this.loadBookingsByPhone(phoneNumber);
-          this.loadSlots({ silent: true });
-        }),
-        catchError((err: unknown) => {
-          this._phoneBookingsError.set(parseApiError(err));
-          return throwError(() => err);
-        }),
-        finalize(() => this._cancelBookingId.set(null)),
-      );
   }
 
   loadSlots(options?: { silent?: boolean }): void {
@@ -271,7 +208,7 @@ export class BookingStateService {
       );
   }
 
-  updateSlotCapacity(slotId: string, action: UpdateTimeSlotCapacityAction): Observable<SlotApiDto> {
+  updateSlotCapacity(slotId: number, action: UpdateTimeSlotCapacityAction): Observable<SlotApiDto> {
     this._slotCreateError.set(null);
     this._capacityAdjustingSlotId.set(slotId);
 
@@ -289,7 +226,7 @@ export class BookingStateService {
       );
   }
 
-  deleteSlot(slotId: string): Observable<void> {
+  deleteSlot(slotId: number): Observable<void> {
     this._slotCreateError.set(null);
     this._deletingSlotId.set(slotId);
 
@@ -306,17 +243,13 @@ export class BookingStateService {
   }
 
   /**
-   * Books a slot for the signed-in user, or as a guest when `phoneNumber` is provided and there is no session.
-   * Applies an optimistic list update, then refreshes from the API.
-   * On failure, reverts the optimistic change and reloads slots from the server.
+   * Queue booking: POST /api/bookings with patient_name and slot_id (UTC slot times; server enforces capacity).
    */
-  bookSlot(slotId: string, options?: { phoneNumber?: string }): Observable<BookingApiDto> {
-    const userId = this.auth.getUserId();
-    const phone = options?.phoneNumber?.trim();
-
-    if (!userId && !phone) {
-      this._bookingError.set('You must be signed in to book, or open Guest registration to enter your phone number.');
-      return throwError(() => new Error('Missing user or phone for booking.'));
+  bookSlot(slotId: number, patientName: string): Observable<BookingApiDto> {
+    const name = patientName.trim();
+    if (!name) {
+      this._bookingError.set('Patient name is required.');
+      return throwError(() => new Error('Patient name is required.'));
     }
 
     const slot = this._slots().find((s) => s.id === slotId);
@@ -331,14 +264,10 @@ export class BookingStateService {
 
     this.applyOptimistic(slotId);
 
-    const body = userId
-      ? { user_id: userId, slot_id: slotId }
-      : { phoneNumber: phone!, slotId };
-
     return this.http
       .post<BookingApiDto>(
         `${environment.apiUrl}/bookings`,
-        body,
+        { patient_name: name, slot_id: slotId },
         { context: httpAlertContext() },
       )
       .pipe(
@@ -353,7 +282,7 @@ export class BookingStateService {
       );
   }
 
-  private applyOptimistic(slotId: string): void {
+  private applyOptimistic(slotId: number): void {
     this._slots.update((list) =>
       list.map((s) =>
         s.id === slotId

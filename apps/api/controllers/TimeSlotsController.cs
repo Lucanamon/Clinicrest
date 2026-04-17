@@ -30,9 +30,9 @@ public class TimeSlotsController(ISlotService slotService) : ControllerBase
         return Created($"/api/time-slots/{result.Slot.Id}", result.Slot);
     }
 
-    [HttpPatch("/api/time-slots/{id:guid}/capacity")]
+    [HttpPatch("/api/time-slots/{id:long}/capacity")]
     public async Task<ActionResult<SlotDto>> UpdateCapacity(
-        Guid id,
+        long id,
         [FromBody] UpdateSlotCapacityRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -55,8 +55,8 @@ public class TimeSlotsController(ISlotService slotService) : ControllerBase
         return Ok(result.Slot);
     }
 
-    [HttpDelete("/api/time-slots/{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
+    [HttpDelete("/api/time-slots/{id:long}")]
+    public async Task<IActionResult> Delete(long id, CancellationToken cancellationToken = default)
     {
         var result = await slotService.DeleteAsync(id, cancellationToken);
         if (!result.IsSuccess)

@@ -4,17 +4,29 @@ namespace api.Application.Bookings;
 
 public class CreateBookingRequest
 {
-    [JsonPropertyName("user_id")]
-    public Guid? UserId { get; set; }
-
-    [JsonPropertyName("phoneNumber")]
-    public string? PhoneNumber { get; set; }
-
     [JsonPropertyName("slot_id")]
-    public Guid? SlotId { get; set; }
+    public long? SlotId { get; set; }
 
     [JsonPropertyName("slotId")]
-    public Guid? SlotIdCamel { get; set; }
+    public long? SlotIdCamel { get; set; }
 
-    public Guid ResolveSlotId() => SlotId ?? SlotIdCamel ?? Guid.Empty;
+    [JsonPropertyName("patient_name")]
+    public string? PatientName { get; set; }
+
+    [JsonPropertyName("patientName")]
+    public string? PatientNameCamel { get; set; }
+
+    public long ResolveSlotId() => SlotId ?? SlotIdCamel ?? 0;
+
+    public string? ResolvePatientName()
+    {
+        var a = PatientName?.Trim();
+        var b = PatientNameCamel?.Trim();
+        if (!string.IsNullOrEmpty(a))
+        {
+            return a;
+        }
+
+        return string.IsNullOrEmpty(b) ? null : b;
+    }
 }

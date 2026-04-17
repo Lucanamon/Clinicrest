@@ -11,9 +11,9 @@ public interface ISlotService
         CancellationToken cancellationToken = default);
 
     Task<(bool IsSuccess, string? Error, SlotDto? Slot)> UpdateCapacityAsync(
-        Guid slotId,
+        long slotId,
         string action,
         CancellationToken cancellationToken = default);
 
-    Task<(bool IsSuccess, string? Error)> DeleteAsync(Guid slotId, CancellationToken cancellationToken = default);
+    Task<(bool IsSuccess, string? Error)> DeleteAsync(long slotId, CancellationToken cancellationToken = default);
 }

@@ -1,0 +1,54 @@
+<div class="slot-queue">
+  <header class="head">
+    <h1>Queue slots</h1>
+    <p class="muted">Times are shown in your local timezone. The API stores UTC instants.</p>
+    <button type="button" class="btn-refresh" (click)="refresh()" [disabled]="loading">Refresh</button>
+  </header>
+
+  @if (loadError) {
+    <p class="error" role="alert">{{ loadError }}</p>
+  }
+
+  @if (bookingMessage) {
+    <p class="success" role="status">{{ bookingMessage }}</p>
+  }
+
+  @if (bookingError) {
+    <p class="error" role="alert">{{ bookingError }}</p>
+  }
+
+  <div class="patient-field">
+    <label for="patient">Patient name (used for each booking)</label>
+    <input id="patient" type="text" [(ngModel)]="patientName" name="patientName" autocomplete="name" placeholder="Full name" />
+  </div>
+
+  @if (loading && slots.length === 0) {
+    <p class="muted">Loading…</p>
+  }
+
+  <ul class="slots" role="list">
+    @for (slot of slots; track slot.id) {
+      <li class="slot-row">
+        <div class="slot-times">
+          <span class="range"
+            >{{ slot.start_time | utcToLocal: 'mediumDate' }}, {{ slot.start_time | utcToLocal: 'shortTime' }} –
+            {{ slot.end_time | utcToLocal: 'shortTime' }}</span
+          >
+          <span class="meta">Open seats: {{ slot.available_slots }} / {{ slot.capacity }}</span>
+        </div>
+        <button
+          type="button"
+          class="btn-book"
+          (click)="book(slot)"
+          [disabled]="activeBookingSlotId === slot.id || slot.available_slots <= 0"
+        >
+          @if (activeBookingSlotId === slot.id) {
+            Booking…
+          } @else {
+            Book
+          }
+        </button>
+      </li>
+    }
+  </ul>
+</div>

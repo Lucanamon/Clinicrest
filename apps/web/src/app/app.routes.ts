@@ -18,6 +18,7 @@ import { AuditLogPage } from './pages/audit-log/audit-log.page';
 import { UsersPage } from './pages/users/users.page';
 import { PatientsReportComponent } from './pages/patients/patients-report/patients-report.component';
 import { BookingPage } from './pages/booking/booking.page';
+import { SlotListComponent } from './booking/slot-list.component';
 import { RegisterPage } from './pages/register/register.page';
 import { ProfileComponent } from './profile/profile.component';
 import { UserFormComponent } from './users/components/user-form/user-form.component';
@@ -27,6 +28,7 @@ export const routes: Routes = [
   { path: '', pathMatch: 'full', canActivate: [rootRedirectGuard], children: [] },
   { path: 'login', component: LoginPage },
   { path: 'register', component: RegisterPage },
+  { path: 'slot-queue', component: SlotListComponent },
   {
     path: '',
     component: DashboardLayoutComponent,

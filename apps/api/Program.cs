@@ -170,7 +170,7 @@ static async Task LogDatabaseStateAsync(WebApplication app)
     command.CommandText =
         """
         SELECT current_database(),
-               EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'time_slots'),
+               EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'slots'),
                EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'bookings');
         """;
 
@@ -178,13 +178,13 @@ static async Task LogDatabaseStateAsync(WebApplication app)
     if (await reader.ReadAsync())
     {
         var databaseName = reader.GetString(0);
-        var hasTimeSlots = reader.GetBoolean(1);
+        var hasSlots = reader.GetBoolean(1);
         var hasBookings = reader.GetBoolean(2);
 
         logger.LogInformation(
-            "Database verification: Database={DatabaseName}, time_slots={HasTimeSlots}, bookings={HasBookings}",
+            "Database verification: Database={DatabaseName}, slots={HasSlots}, bookings={HasBookings}",
             databaseName,
-            hasTimeSlots,
+            hasSlots,
             hasBookings);
     }
 }

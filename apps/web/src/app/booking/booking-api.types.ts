@@ -2,7 +2,7 @@
 export type ApiUtcIsoString = string;
 
 export interface SlotApiDto {
-  id: string;
+  id: number;
   start_time: ApiUtcIsoString;
   end_time: ApiUtcIsoString;
   capacity: number;
@@ -19,18 +19,9 @@ export interface CreateTimeSlotRequest {
 export type UpdateTimeSlotCapacityAction = 'increase' | 'decrease';
 
 export interface BookingApiDto {
-  id: string;
-  user_id?: string | null;
-  phone_number?: string | null;
-  slot_id: string;
+  id: number;
+  slot_id: number;
+  patient_name: string;
   status: string;
   created_at: ApiUtcIsoString;
-}
-
-export interface PhoneBookingApiDto {
-  id: string;
-  slot_id: string;
-  start_time: ApiUtcIsoString;
-  end_time: ApiUtcIsoString;
-  status: 'active' | 'cancelled' | string;
 }

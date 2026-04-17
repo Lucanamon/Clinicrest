@@ -2,15 +2,13 @@ namespace api.Domain.Entities;
 
 public class Booking
 {
-    public Guid Id { get; set; }
+    public long Id { get; set; }
 
-    public Guid? UserId { get; set; }
+    public long SlotId { get; set; }
 
-    public string? PhoneNumber { get; set; }
+    public string PatientName { get; set; } = string.Empty;
 
-    public Guid SlotId { get; set; }
-
-    public string Status { get; set; } = "active";
+    public BookingStatus Status { get; set; }
 
     public DateTime CreatedAt { get; set; }
 }

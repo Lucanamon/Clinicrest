@@ -23,7 +23,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<Backlog> Backlogs => Set<Backlog>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
-    public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
+    public DbSet<Slot> Slots => Set<Slot>();
     public DbSet<Booking> Bookings => Set<Booking>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -250,18 +250,11 @@ public class ApplicationDbContext : DbContext
                 .HasDatabaseName("ix_audit_logs_timestamp");
         });
 
-        modelBuilder.Entity<TimeSlot>(entity =>
+        modelBuilder.Entity<Slot>(entity =>
         {
             entity.ToTable(
-                "time_slots",
-                t =>
-                {
-                    t.HasCheckConstraint("chk_time_slots_time_range", "\"end_time\" > \"start_time\"");
-                    t.HasCheckConstraint("chk_time_slots_capacity_positive", "\"capacity\" > 0");
-                    t.HasCheckConstraint(
-                        "chk_time_slots_booked_count_range",
-                        "\"booked_count\" >= 0 AND \"booked_count\" <= \"capacity\"");
-                });
+                "slots",
+                t => t.HasCheckConstraint("chk_slots_booked_lte_capacity", "\"booked_count\" <= \"capacity\""));
 
             entity.HasKey(t => t.Id);
 
@@ -298,37 +291,28 @@ public class ApplicationDbContext : DbContext
         {
             entity.ToTable(
                 "bookings",
-                t =>
-                {
-                    t.HasCheckConstraint("chk_bookings_status", "\"status\" IN ('active', 'cancelled')");
-                    t.HasCheckConstraint(
-                        "chk_bookings_identity_required",
-                        "user_id IS NOT NULL OR phone_number IS NOT NULL");
-                    t.HasCheckConstraint(
-                        "chk_bookings_phone_format",
-                        "phone_number IS NULL OR phone_number ~ '^[0-9]{9,10}$'");
-                });
+                t => t.HasCheckConstraint("chk_bookings_status", "\"status\" IN ('ACTIVE', 'CANCELLED')"));
 
             entity.HasKey(b => b.Id);
 
             entity.Property(b => b.Id)
                 .HasColumnName("id");
 
-            entity.Property(b => b.UserId)
-                .HasColumnName("user_id");
-
-            entity.Property(b => b.PhoneNumber)
-                .HasColumnName("phone_number")
-                .HasColumnType("text")
-                .HasMaxLength(10);
-
             entity.Property(b => b.SlotId)
                 .IsRequired()
                 .HasColumnName("slot_id");
 
+            entity.Property(b => b.PatientName)
+                .IsRequired()
+                .HasColumnName("patient_name")
+                .HasMaxLength(500);
+
             entity.Property(b => b.Status)
                 .IsRequired()
                 .HasColumnName("status")
+                .HasConversion(
+                    v => v == BookingStatus.Active ? "ACTIVE" : "CANCELLED",
+                    v => v == "ACTIVE" ? BookingStatus.Active : BookingStatus.Cancelled)
                 .HasColumnType("text");
 
             entity.Property(b => b.CreatedAt)
@@ -337,23 +321,13 @@ public class ApplicationDbContext : DbContext
                 .HasColumnType("timestamp with time zone")
                 .HasDefaultValueSql("NOW()");
 
-            entity.HasOne<TimeSlot>()
+            entity.HasOne<Slot>()
                 .WithMany()
                 .HasForeignKey(b => b.SlotId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(b => b.SlotId)
                 .HasDatabaseName("ix_bookings_slot_id");
-
-            entity.HasIndex(b => new { b.UserId, b.SlotId })
-                .IsUnique()
-                .HasDatabaseName("ux_bookings_user_slot_active")
-                .HasFilter("\"status\" = 'active' AND user_id IS NOT NULL");
-
-            entity.HasIndex(b => new { b.PhoneNumber, b.SlotId })
-                .IsUnique()
-                .HasDatabaseName("ux_bookings_phone_slot_active")
-                .HasFilter("\"status\" = 'active' AND phone_number IS NOT NULL");
         });
     }
 

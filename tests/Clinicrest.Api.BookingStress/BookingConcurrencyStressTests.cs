@@ -10,8 +10,7 @@ using Xunit;
 namespace Clinicrest.Api.BookingStress;
 
 /// <summary>
-/// Stress: 100 concurrent POST /api/bookings for the same slot (capacity 10), each with a distinct user_id.
-/// Idempotency is per (user_id, slot_id), so one user cannot fill multiple seats; distinct users are required.
+/// Stress: 100 concurrent POST /api/bookings for the same slot (capacity 10), each with a distinct patient_name.
 /// Requires Docker (Testcontainers).
 /// </summary>
 [CollectionDefinition(nameof(BookingStressCollection))]
@@ -28,28 +27,24 @@ public sealed class BookingConcurrencyStressTests(BookingStressFixture fixture)
         var client = fixture.Client;
         var slotId = fixture.SlotId;
 
-        var userIds = Enumerable.Range(0, 100).Select(_ => Guid.NewGuid()).ToArray();
-
-        var tasks = userIds.Select(userId =>
-            client.PostAsJsonAsync("/api/bookings", new { user_id = userId, slot_id = slotId }));
+        var tasks = Enumerable.Range(0, 100).Select(i =>
+            client.PostAsJsonAsync("/api/bookings", new { patient_name = $"StressPatient_{i}", slot_id = slotId }));
 
         var responses = await Task.WhenAll(tasks);
 
         var created = responses.Count(r => r.StatusCode == HttpStatusCode.Created);
-        var okReplay = responses.Count(r => r.StatusCode == HttpStatusCode.OK);
         var conflict = responses.Count(r => r.StatusCode == HttpStatusCode.Conflict);
         var badRequest = responses.Count(r => r.StatusCode == HttpStatusCode.BadRequest);
 
         foreach (var r in responses.Where(r =>
                      r.StatusCode is not HttpStatusCode.Created
                      and not HttpStatusCode.Conflict
-                     and not HttpStatusCode.OK))
+                     and not HttpStatusCode.BadRequest))
         {
             var body = await r.Content.ReadAsStringAsync();
             Assert.Fail($"Unexpected status {r.StatusCode}: {body}");
         }
 
-        Assert.Equal(0, okReplay);
         Assert.Equal(0, badRequest);
         Assert.Equal(10, created);
         Assert.Equal(90, conflict);
@@ -62,7 +57,7 @@ public sealed class BookingConcurrencyStressTests(BookingStressFixture fixture)
         await using (var cmd = new NpgsqlCommand(
                            """
                            SELECT booked_count, capacity
-                           FROM time_slots
+                           FROM slots
                            WHERE id = @id
                            """,
                            conn))
@@ -82,7 +77,7 @@ public sealed class BookingConcurrencyStressTests(BookingStressFixture fixture)
                           """
                           SELECT COUNT(*)::int
                           FROM bookings
-                          WHERE slot_id = @id AND status = 'active'
+                          WHERE slot_id = @id AND status = 'ACTIVE'
                           """,
                           conn))
         {
@@ -99,7 +94,7 @@ public sealed class BookingStressFixture : IAsyncLifetime
     private WebApplicationFactory<global::Program>? _factory;
 
     public HttpClient Client { get; private set; } = null!;
-    public Guid SlotId { get; private set; }
+    public long SlotId { get; private set; }
     public string ConnectionString { get; private set; } = null!;
 
     public async Task InitializeAsync()
@@ -132,8 +127,7 @@ public sealed class BookingStressFixture : IAsyncLifetime
         var token = await LoginAsync(Client);
         Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        SlotId = Guid.NewGuid();
-        await InsertStressSlotAsync(ConnectionString, SlotId);
+        SlotId = await InsertStressSlotAsync(ConnectionString);
     }
 
     public async Task DisposeAsync()
@@ -173,7 +167,7 @@ public sealed class BookingStressFixture : IAsyncLifetime
         }
     }
 
-    private static async Task InsertStressSlotAsync(string connectionString, Guid slotId)
+    private static async Task<long> InsertStressSlotAsync(string connectionString)
     {
         var start = DateTime.SpecifyKind(DateTime.UtcNow.AddDays(1).Date.AddHours(12), DateTimeKind.Utc);
         var end = start.AddHours(1);
@@ -181,55 +175,42 @@ public sealed class BookingStressFixture : IAsyncLifetime
         await conn.OpenAsync();
         await using var cmd = new NpgsqlCommand(
             """
-            INSERT INTO time_slots (id, start_time, end_time, capacity, booked_count, created_at)
-            VALUES (@id, @start, @end, 10, 0, NOW())
+            INSERT INTO slots (start_time, end_time, capacity, booked_count, created_at)
+            VALUES (@start, @end, 10, 0, NOW())
+            RETURNING id
             """,
             conn);
-        cmd.Parameters.AddWithValue("id", slotId);
         cmd.Parameters.AddWithValue("start", start);
         cmd.Parameters.AddWithValue("end", end);
-        await cmd.ExecuteNonQueryAsync();
+        var id = await cmd.ExecuteScalarAsync();
+        return Convert.ToInt64(id);
     }
 
-    /// <summary>EF migrations do not include booking tables; mirror SQL migration in batches.</summary>
     private static readonly string[] BookingSchemaBatches =
     [
         """
-        CREATE TABLE IF NOT EXISTS time_slots (
-            id uuid PRIMARY KEY,
+        CREATE TABLE IF NOT EXISTS slots (
+            id bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
             start_time timestamp with time zone NOT NULL,
             end_time timestamp with time zone NOT NULL,
             capacity integer NOT NULL,
             booked_count integer NOT NULL DEFAULT 0,
             created_at timestamp with time zone NOT NULL DEFAULT NOW(),
-            CONSTRAINT chk_time_slots_time_range CHECK (end_time > start_time),
-            CONSTRAINT chk_time_slots_capacity_positive CHECK (capacity > 0),
-            CONSTRAINT chk_time_slots_booked_count_range CHECK (booked_count >= 0 AND booked_count <= capacity)
+            CONSTRAINT chk_slots_booked_lte_capacity CHECK (booked_count <= capacity)
         );
         """,
         """
         CREATE TABLE IF NOT EXISTS bookings (
-            id uuid PRIMARY KEY,
-            user_id uuid,
-            phone_number text,
-            slot_id uuid NOT NULL REFERENCES time_slots(id) ON DELETE RESTRICT,
+            id bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+            slot_id bigint NOT NULL REFERENCES slots(id) ON DELETE RESTRICT,
+            patient_name character varying(500) NOT NULL,
             status text NOT NULL,
             created_at timestamp with time zone NOT NULL DEFAULT NOW(),
-            CONSTRAINT chk_bookings_status CHECK (status IN ('active', 'cancelled'))
+            CONSTRAINT chk_bookings_status CHECK (status IN ('ACTIVE', 'CANCELLED'))
         );
         """,
         """
         CREATE INDEX IF NOT EXISTS ix_bookings_slot_id ON bookings(slot_id);
-        """,
-        """
-        CREATE UNIQUE INDEX IF NOT EXISTS ux_bookings_user_slot_active
-            ON bookings(user_id, slot_id)
-            WHERE status = 'active' AND user_id IS NOT NULL;
-        """,
-        """
-        CREATE UNIQUE INDEX IF NOT EXISTS ux_bookings_phone_slot_active
-            ON bookings(phone_number, slot_id)
-            WHERE status = 'active' AND phone_number IS NOT NULL;
         """
     ];
 }

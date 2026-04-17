@@ -170,10 +170,12 @@ namespace api.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("api.Domain.Entities.Booking", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("bigint")
                         .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -181,13 +183,14 @@ namespace api.Infrastructure.Persistence.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("NOW()");
 
-                    b.Property<string>("PhoneNumber")
-                        .HasMaxLength(10)
-                        .HasColumnType("text")
-                        .HasColumnName("phone_number");
+                    b.Property<string>("PatientName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("patient_name");
 
-                    b.Property<Guid>("SlotId")
-                        .HasColumnType("uuid")
+                    b.Property<long>("SlotId")
+                        .HasColumnType("bigint")
                         .HasColumnName("slot_id");
 
                     b.Property<string>("Status")
@@ -195,32 +198,14 @@ namespace api.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("status");
 
-                    b.Property<Guid?>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
                     b.HasKey("Id");
 
                     b.HasIndex("SlotId")
                         .HasDatabaseName("ix_bookings_slot_id");
 
-                    b.HasIndex("PhoneNumber", "SlotId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_bookings_phone_slot_active")
-                        .HasFilter("\"status\" = 'active' AND phone_number IS NOT NULL");
-
-                    b.HasIndex("UserId", "SlotId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_bookings_user_slot_active")
-                        .HasFilter("\"status\" = 'active' AND user_id IS NOT NULL");
-
                     b.ToTable("bookings", null, t =>
                         {
-                            t.HasCheckConstraint("chk_bookings_identity_required", "user_id IS NOT NULL OR phone_number IS NOT NULL");
-
-                            t.HasCheckConstraint("chk_bookings_phone_format", "phone_number IS NULL OR phone_number ~ '^[0-9]{9,10}$'");
-
-                            t.HasCheckConstraint("chk_bookings_status", "\"status\" IN ('active', 'cancelled')");
+                            t.HasCheckConstraint("chk_bookings_status", "\"status\" IN ('ACTIVE', 'CANCELLED')");
                         });
                 });
 
@@ -280,12 +265,14 @@ namespace api.Infrastructure.Persistence.Migrations
                     b.ToTable("patients", (string)null);
                 });
 
-            modelBuilder.Entity("api.Domain.Entities.TimeSlot", b =>
+            modelBuilder.Entity("api.Domain.Entities.Slot", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("bigint")
                         .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<int>("BookedCount")
                         .ValueGeneratedOnAdd()
@@ -313,13 +300,9 @@ namespace api.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("time_slots", null, t =>
+                    b.ToTable("slots", null, t =>
                         {
-                            t.HasCheckConstraint("chk_time_slots_booked_count_range", "\"booked_count\" >= 0 AND \"booked_count\" <= \"capacity\"");
-
-                            t.HasCheckConstraint("chk_time_slots_capacity_positive", "\"capacity\" > 0");
-
-                            t.HasCheckConstraint("chk_time_slots_time_range", "\"end_time\" > \"start_time\"");
+                            t.HasCheckConstraint("chk_slots_booked_lte_capacity", "\"booked_count\" <= \"capacity\"");
                         });
                 });
 
@@ -412,7 +395,7 @@ namespace api.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("api.Domain.Entities.Booking", b =>
                 {
-                    b.HasOne("api.Domain.Entities.TimeSlot", null)
+                    b.HasOne("api.Domain.Entities.Slot", null)
                         .WithMany()
                         .HasForeignKey("SlotId")
                         .OnDelete(DeleteBehavior.Restrict)

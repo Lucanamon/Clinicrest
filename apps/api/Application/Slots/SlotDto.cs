@@ -5,7 +5,7 @@ namespace api.Application.Slots;
 public class SlotDto
 {
     [JsonPropertyName("id")]
-    public Guid Id { get; set; }
+    public long Id { get; set; }
 
     [JsonPropertyName("start_time")]
     public DateTimeOffset StartTime { get; set; }
