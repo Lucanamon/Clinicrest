@@ -124,6 +124,23 @@
           <div><span>Booked:</span> {{ selectedSlot.booked_count }}</div>
           <div><span>Available:</span> {{ selectedSlot.available_slots }}</div>
         </div>
+        <div class="slot-delete-bar" role="group" aria-label="Slot actions">
+          <button
+            type="button"
+            class="btn-danger"
+            (click)="deleteSelectedSlot()"
+            [disabled]="!canDeleteSlot(selectedSlot) || booking.deletingSlotId() === selectedSlot.id"
+          >
+            @if (booking.deletingSlotId() === selectedSlot.id) {
+              Deleting…
+            } @else {
+              Delete slot
+            }
+          </button>
+          @if (!canDeleteSlot(selectedSlot)) {
+            <p class="slot-delete-hint">Cancel or reassign active bookings before deleting this slot.</p>
+          }
+        </div>
       } @else {
         <p class="muted-text">Click an existing slot to view details. Click an empty cell to create a slot.</p>
       }

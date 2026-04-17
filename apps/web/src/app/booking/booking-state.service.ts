@@ -100,6 +100,7 @@ export class BookingStateService {
   private readonly _slotCreateError = signal<string | null>(null);
   private readonly _creatingSlot = signal(false);
   private readonly _capacityAdjustingSlotId = signal<string | null>(null);
+  private readonly _deletingSlotId = signal<string | null>(null);
   private readonly _bookingSlotId = signal<string | null>(null);
   private readonly _phoneBookings = signal<PhoneBookingApiDto[]>([]);
   private readonly _phoneBookingsLoading = signal(false);
@@ -114,6 +115,7 @@ export class BookingStateService {
   readonly slotCreateError = this._slotCreateError.asReadonly();
   readonly creatingSlot = this._creatingSlot.asReadonly();
   readonly capacityAdjustingSlotId = this._capacityAdjustingSlotId.asReadonly();
+  readonly deletingSlotId = this._deletingSlotId.asReadonly();
   readonly bookingSlotId = this._bookingSlotId.asReadonly();
   readonly phoneBookings = this._phoneBookings.asReadonly();
   readonly phoneBookingsLoading = this._phoneBookingsLoading.asReadonly();
@@ -284,6 +286,22 @@ export class BookingStateService {
           return throwError(() => err);
         }),
         finalize(() => this._capacityAdjustingSlotId.set(null)),
+      );
+  }
+
+  deleteSlot(slotId: string): Observable<void> {
+    this._slotCreateError.set(null);
+    this._deletingSlotId.set(slotId);
+
+    return this.http
+      .delete<void>(`${environment.apiUrl}/time-slots/${slotId}`, { context: httpAlertContext() })
+      .pipe(
+        tap(() => this.loadAllSlots({ silent: true })),
+        catchError((err: unknown) => {
+          this._slotCreateError.set(parseApiError(err));
+          return throwError(() => err);
+        }),
+        finalize(() => this._deletingSlotId.set(null)),
       );
   }
 

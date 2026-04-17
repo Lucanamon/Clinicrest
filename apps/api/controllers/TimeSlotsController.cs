@@ -54,4 +54,21 @@ public class TimeSlotsController(ISlotService slotService) : ControllerBase
 
         return Ok(result.Slot);
     }
+
+    [HttpDelete("/api/time-slots/{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
+    {
+        var result = await slotService.DeleteAsync(id, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            if (string.Equals(result.Error, "Slot not found.", StringComparison.Ordinal))
+            {
+                return NotFound(new { message = result.Error });
+            }
+
+            return BadRequest(new { message = result.Error ?? "Unable to delete slot." });
+        }
+
+        return NoContent();
+    }
 }

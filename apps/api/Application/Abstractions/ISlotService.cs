@@ -14,4 +14,6 @@ public interface ISlotService
         Guid slotId,
         string action,
         CancellationToken cancellationToken = default);
+
+    Task<(bool IsSuccess, string? Error)> DeleteAsync(Guid slotId, CancellationToken cancellationToken = default);
 }

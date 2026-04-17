@@ -188,6 +188,38 @@ export class BookingPage implements OnInit {
     return slot.capacity > slot.booked_count;
   }
 
+  canDeleteSlot(slot: SlotApiDto): boolean {
+    return slot.booked_count === 0;
+  }
+
+  deleteSelectedSlot(): void {
+    const slot = this.selectedSlot;
+    if (!slot || !this.canDeleteSlot(slot)) {
+      return;
+    }
+
+    const startLabel = new Date(slot.start_time).toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+
+    if (
+      !globalThis.confirm(
+        `Delete this time slot (${startLabel})? Cancelled booking history for this slot will be removed. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    this.booking.deleteSlot(slot.id).subscribe({
+      next: () => {
+        this.selectedSlot = null;
+        this.localFormError = null;
+      },
+      error: () => undefined,
+    });
+  }
+
   private buildWeek(reference: Date): CalendarDay[] {
     const utcMidnight = new Date(Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth(), reference.getUTCDate()));
     const dayIndex = utcMidnight.getUTCDay();

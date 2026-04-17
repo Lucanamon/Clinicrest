@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
 import { bookingInternalGuard } from './guards/booking-internal.guard';
+import { rootRedirectGuard } from './guards/root-redirect.guard';
 import { AppointmentFormComponent } from './appointment/components/appointment-form/appointment-form.component';
 import { AppointmentListComponent } from './appointment/components/appointment-list/appointment-list.component';
 import { BacklogFormComponent } from './backlog/components/backlog-form/backlog-form.component';
@@ -23,6 +24,7 @@ import { UserFormComponent } from './users/components/user-form/user-form.compon
 import { UserListComponent } from './users/components/user-list/user-list.component';
 
 export const routes: Routes = [
+  { path: '', pathMatch: 'full', canActivate: [rootRedirectGuard], children: [] },
   { path: 'login', component: LoginPage },
   { path: 'register', component: RegisterPage },
   {

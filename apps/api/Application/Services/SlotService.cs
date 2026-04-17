@@ -90,6 +90,40 @@ public class SlotService(ISlotRepository slotRepository, ApplicationDbContext db
         }
     }
 
+    public async Task<(bool IsSuccess, string? Error)> DeleteAsync(Guid slotId, CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        try
+        {
+            var slot = await slotRepository.GetForUpdateAsync(slotId, cancellationToken);
+            if (slot is null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return (false, "Slot not found.");
+            }
+
+            if (slot.BookedCount > 0)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return (false, "Cannot delete a slot that still has active bookings.");
+            }
+
+            await dbContext.Bookings
+                .Where(b => b.SlotId == slotId)
+                .ExecuteDeleteAsync(cancellationToken);
+
+            dbContext.TimeSlots.Remove(slot);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return (true, null);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
     private static SlotDto MapToDto(TimeSlot slot)
     {
         var capacity = Math.Max(slot.Capacity, 0);
