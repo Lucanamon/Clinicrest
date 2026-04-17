@@ -1,76 +1,37 @@
 <main class="schedule-shell">
   <header class="schedule-header">
-    <h1>Finalize Appointment</h1>
-    <a routerLink="/appointments" class="back-link">Back to Appointments</a>
+    <div>
+      <h1>Schedule</h1>
+      <p class="subtle">Doctor: {{ doctorLabel }}</p>
+    </div>
+    <a routerLink="/appointments" class="back-link">Back to Triage</a>
   </header>
 
   @if (error()) {
     <section class="state-card error">{{ error() }}</section>
   }
 
-  <section class="card patient-card">
-    <h2>Patient Info</h2>
-    <div class="info-grid">
-      <div>
-        <span class="label">Name</span>
-        <p>{{ patientName() || 'Unknown' }}</p>
-      </div>
-      <div>
-        <span class="label">Phone</span>
-        <input
-          type="tel"
-          [value]="form.controls.phone.value"
-          (input)="onPhoneInput($any($event.target).value)"
-          placeholder="Enter phone number"
-          pattern="^[0-9+]*$"
-          [disabled]="saving()"
-        />
-        @if ((form.controls.phone.dirty || form.controls.phone.touched) && form.controls.phone.hasError('pattern')) {
-          <small class="field-error">Phone number can only contain digits and '+'.</small>
-        }
-      </div>
-    </div>
-  </section>
-
-  <form class="card schedule-form" [formGroup]="form" (ngSubmit)="submit()">
-    <section class="form-section">
-      <h2>Doctor Assignment</h2>
-      <label class="field">
-        <span>Assign to Doctor</span>
-        <select formControlName="doctorId" [disabled]="loadingDoctors() || saving()">
-          <option value="">Select a doctor</option>
-          @for (doctor of doctors(); track doctor.id) {
-            <option [value]="doctor.id">{{ doctor.username }}</option>
-          }
-        </select>
-      </label>
-    </section>
-
-    <section class="form-section">
-      <h2>Final Details</h2>
-      <label class="field">
-        <span>Date &amp; Time</span>
-        <input type="datetime-local" formControlName="appointmentDate" [disabled]="saving()" />
-      </label>
-
-      <label class="field">
-        <span>Notes</span>
-        <textarea
-          rows="4"
-          formControlName="notes"
-          placeholder="Patient has a fever"
-          [disabled]="saving()"
-        ></textarea>
-      </label>
-    </section>
-
-    <button type="submit" class="primary-btn" [disabled]="saving() || loadingDoctors()">
-      @if (saving()) {
-        <span class="spinner" aria-hidden="true"></span>
-        Saving...
-      } @else {
-        Confirm &amp; Schedule
+  @if (loading()) {
+    <section class="state-card">Loading scheduled appointments...</section>
+  } @else if (scheduledRows().length === 0) {
+    <section class="state-card">No scheduled appointments yet.</section>
+  } @else {
+    <section class="timeline-grid">
+      @for (row of scheduledRows(); track row.id) {
+        <article class="appointment-card">
+          <div class="timeline-dot" aria-hidden="true"></div>
+          <div class="card-head">
+            <h2>{{ formatDateTime(row.slot_start_time) }}</h2>
+            <span class="doctor-chip">{{ row.doctor_name || doctorLabel }}</span>
+          </div>
+          <div class="row"><strong>Patient</strong><span>{{ row.patient_name }}</span></div>
+          <div class="row"><strong>Phone</strong><span>{{ getValidPhone(row.phone_number) }}</span></div>
+          <div class="row"><strong>Notes/Fever</strong><span>No fever notes provided.</span></div>
+          <button type="button" class="cancel-btn" (click)="cancelScheduledAppointment(row)">
+            Cancel Appointment
+          </button>
+        </article>
       }
-    </button>
-  </form>
+    </section>
+  }
 </main>

@@ -1,4 +1,5 @@
 using api.Application.Bookings;
+using api.Domain.Entities;
 
 namespace api.Application.Abstractions;
 
@@ -10,5 +11,7 @@ public interface IBookingService
 
     Task<bool> ScheduleAsync(long bookingId, Guid patientId, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<BookingListItem>> GetActiveListAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<BookingListItem>> GetListByStatusAsync(
+        BookingStatus status,
+        CancellationToken cancellationToken = default);
 }

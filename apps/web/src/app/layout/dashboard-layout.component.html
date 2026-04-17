@@ -13,25 +13,29 @@
     } @else {
       <nav class="nav-links" aria-label="Main navigation">
         <a routerLink="/patients" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          Patients
+          <span class="nav-label">Patients</span>
         </a>
         <a routerLink="/appointments" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          Appointments
+          <span class="nav-label">Appointments</span>
+        </a>
+        <a routerLink="/schedule" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <span class="material-symbols-outlined nav-icon" aria-hidden="true">calendar_today</span>
+          <span class="nav-label">Schedule</span>
         </a>
         @if (canAccessBooking) {
           <a routerLink="/booking" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-            Booking
+            <span class="nav-label">Booking</span>
           </a>
         }
         <a routerLink="/backlog" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          Backlog
+          <span class="nav-label">Backlog</span>
         </a>
         @if (auth.isRootAdmin()) {
           <a routerLink="/users" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-            Users
+            <span class="nav-label">Users</span>
           </a>
           <a routerLink="/audit-logs" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-            Audit log
+            <span class="nav-label">Audit log</span>
           </a>
         }
       </nav>

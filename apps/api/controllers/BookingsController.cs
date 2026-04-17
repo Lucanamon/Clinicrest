@@ -17,11 +17,14 @@ public class BookingsController(
 {
     [Authorize(Roles = Roles.ClinicalAll)]
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<BookingListItem>>> List(CancellationToken cancellationToken = default)
+    public async Task<ActionResult<IReadOnlyList<BookingListItem>>> List(
+        [FromQuery] string? status = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var rows = await bookingService.GetActiveListAsync(cancellationToken);
+            var targetStatus = ParseStatus(status);
+            var rows = await bookingService.GetListByStatusAsync(targetStatus, cancellationToken);
             return Ok(rows ?? Array.Empty<BookingListItem>());
         }
         catch (Exception ex)
@@ -109,5 +112,25 @@ public class BookingsController(
         }
 
         return Ok(new { success = true });
+    }
+
+    private static BookingStatus ParseStatus(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            return BookingStatus.Active;
+        }
+
+        if (string.Equals(status.Trim(), "SCHEDULED", StringComparison.OrdinalIgnoreCase))
+        {
+            return BookingStatus.Scheduled;
+        }
+
+        if (string.Equals(status.Trim(), "CANCELLED", StringComparison.OrdinalIgnoreCase))
+        {
+            return BookingStatus.Cancelled;
+        }
+
+        return BookingStatus.Active;
     }
 }

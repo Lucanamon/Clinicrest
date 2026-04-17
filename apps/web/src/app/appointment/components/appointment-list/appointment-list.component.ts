@@ -1,93 +1,40 @@
-import { isPlatformBrowser } from '@angular/common';
-import {
-  Component,
-  OnDestroy,
-  OnInit,
-  PLATFORM_ID,
-  afterNextRender,
-  computed,
-  inject,
-  signal
-} from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { NgFor } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import { EMPTY, Subject, Subscription, debounceTime, expand, map, reduce } from 'rxjs';
-import { AppointmentDto, AppointmentService } from '../../appointment.service';
-import { AuthService } from '../../../services/auth';
 import { PatientDto, PatientService } from '../../../patient/patient.service';
+import { BookingApiDto } from '../../../booking/booking-api.types';
+import { BookingService } from '../../../booking/booking.service';
 
 @Component({
   selector: 'app-appointment-list',
   standalone: true,
-  imports: [NgFor, RouterLink, FormsModule],
+  imports: [NgFor, FormsModule],
   templateUrl: './appointment-list.component.html',
   styleUrl: './appointment-list.component.scss'
 })
 export class AppointmentListComponent implements OnInit, OnDestroy {
-  private readonly appointmentService = inject(AppointmentService);
-  private readonly platformId = inject(PLATFORM_ID);
+  private readonly bookingService = inject(BookingService);
   private readonly router = inject(Router);
   private readonly patientService = inject(PatientService);
-  readonly auth = inject(AuthService);
 
-  readonly searchTerm = toSignal(this.appointmentService.getSearchTerm(), {
-    initialValue: this.appointmentService.getSearchTermSnapshot()
-  });
-
-  readonly sortBy = toSignal(this.appointmentService.getSortBy(), {
-    initialValue: this.appointmentService.getSortBySnapshot()
-  });
-
-  readonly sortDirection = toSignal(this.appointmentService.getSortDirection(), {
-    initialValue: this.appointmentService.getSortDirectionSnapshot()
-  });
-
-  readonly appointments = signal<AppointmentDto[]>([]);
-  readonly totalCount = signal(0);
-  readonly page = signal(1);
-  readonly pageSize = signal(10);
-  readonly statusFilter = signal('');
-  readonly fromDate = signal('');
-  readonly toDate = signal('');
+  readonly triageRows = signal<BookingApiDto[]>([]);
+  readonly allTriageRows = signal<BookingApiDto[]>([]);
+  readonly searchTerm = signal('');
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
   readonly registeredPatientMap = signal<Record<string, PatientDto>>({});
 
-  readonly totalPages = computed(() => {
-    const total = this.totalCount();
-    const size = this.pageSize();
-    if (size < 1 || total === 0) {
-      return 0;
-    }
-    return Math.ceil(total / size);
-  });
-
   private readonly searchTrigger$ = new Subject<void>();
   private searchDebounceSub?: Subscription;
-  private refreshSub?: Subscription;
   private successTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
-  constructor() {
-    if (!isPlatformBrowser(this.platformId)) {
-      this.loading.set(false);
-    }
-    afterNextRender(() => {
-      this.loadAppointments();
-    });
-  }
+  constructor() {}
 
   ngOnInit(): void {
-    const successFromNavigation = this.router.getCurrentNavigation()?.extras.state?.['successMessage'] as string | undefined;
-    const successFromHistory =
-      isPlatformBrowser(this.platformId) &&
-      !successFromNavigation &&
-      typeof history.state?.successMessage === 'string'
-        ? (history.state.successMessage as string)
-        : undefined;
-    const success = successFromNavigation ?? successFromHistory;
+    const success = this.router.getCurrentNavigation()?.extras.state?.['successMessage'] as string | undefined;
     if (success) {
       this.successMessage.set(success);
       if (this.successTimeoutId !== null) {
@@ -100,18 +47,13 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
     }
 
     this.searchDebounceSub = this.searchTrigger$.pipe(debounceTime(300)).subscribe(() => {
-      this.page.set(1);
-      this.loadAppointments();
+      this.applyClientFilter();
     });
-    this.refreshSub = this.appointmentService.getRefreshStream().subscribe(() => {
-      this.page.set(1);
-      this.loadAppointments();
-    });
+    this.loadTriageInbox();
   }
 
   ngOnDestroy(): void {
     this.searchDebounceSub?.unsubscribe();
-    this.refreshSub?.unsubscribe();
     this.searchTrigger$.complete();
     if (this.successTimeoutId !== null) {
       clearTimeout(this.successTimeoutId);
@@ -120,206 +62,70 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
   }
 
   onSearchChange(value: string): void {
-    this.appointmentService.setSearchTerm(value);
+    this.searchTerm.set(value);
     this.searchTrigger$.next();
   }
 
-  onStatusChange(value: string): void {
-    this.statusFilter.set(value);
-    this.page.set(1);
-    this.loadAppointments();
-  }
-
-  onPageSizeChange(value: string): void {
-    const n = parseInt(value, 10);
-    if (!Number.isFinite(n) || n < 1) {
-      return;
-    }
-    this.pageSize.set(n);
-    this.page.set(1);
-    this.loadAppointments();
-  }
-
-  onFromDateChange(value: string): void {
-    this.fromDate.set(value);
-    this.page.set(1);
-    this.loadAppointments();
-  }
-
-  onToDateChange(value: string): void {
-    this.toDate.set(value);
-    this.page.set(1);
-    this.loadAppointments();
-  }
-
-  goToPage(nextPage: number): void {
-    const max = this.totalPages();
-    if (nextPage < 1 || (max > 0 && nextPage > max)) {
-      return;
-    }
-    this.page.set(nextPage);
-    this.loadAppointments();
-  }
-
-  onSortColumn(column: string): void {
-    const current = this.appointmentService.getSortBySnapshot();
-    const dir = this.appointmentService.getSortDirectionSnapshot();
-    if (current === column) {
-      this.appointmentService.setSort(column, dir === 'asc' ? 'desc' : 'asc');
-    } else {
-      this.appointmentService.setSort(column, 'asc');
-    }
-    this.loadAppointments();
-  }
-
-  loadAppointments(): void {
+  loadTriageInbox(): void {
     this.loading.set(true);
     this.error.set(null);
-    const search = this.appointmentService.getSearchTermSnapshot().trim();
-    const status = this.statusFilter().trim();
-    const from = this.fromDate().trim();
-    const to = this.toDate().trim();
 
-    this.appointmentService
-      .getPaged({
-        pageNumber: this.page(),
-        pageSize: this.pageSize(),
-        searchTerm: search || undefined,
-        status: status || undefined,
-        fromAppointmentDate: from || undefined,
-        toAppointmentDate: to || undefined,
-        sortBy: this.appointmentService.getSortBySnapshot(),
-        sortDirection: this.appointmentService.getSortDirectionSnapshot()
-      })
+    this.bookingService
+      .getBookings('ACTIVE')
       .subscribe({
-        next: (res) => {
+        next: (rows) => {
           this.updateRegisteredPatientMap();
-          this.appointments.set(res.items);
-          this.totalCount.set(res.totalCount);
+          this.allTriageRows.set(rows);
+          this.applyClientFilter();
           this.loading.set(false);
         },
-        error: (err) => {
-          console.error('Error:', err);
-          if (err?.status === 500) {
-            console.error('Appointments API returned 500. Full error response:', {
-              status: err.status,
-              statusText: err.statusText,
-              url: err.url,
-              message: err.message,
-              error: err.error,
-              raw: err
-            });
-          }
-          const errorPayload = typeof err?.error === 'string' ? err.error.trim().toLowerCase() : '';
-          if (errorPayload.startsWith('<!doctype html') || errorPayload.startsWith('<html')) {
-            console.error('Appointments endpoint returned HTML instead of JSON. Check API route/base URL.');
-          }
-          console.error('Failed to load appointments list', err);
-          this.error.set('Unable to load appointments. Please try again.');
+        error: () => {
+          this.error.set('Unable to load pending requests. Please try again.');
           this.loading.set(false);
         }
       });
   }
 
-  confirmCancelBooking(row: AppointmentDto): void {
-    if (!this.isBookingRow(row) || row.bookingId == null) {
-      return;
-    }
-    const ok = window.confirm('Are you sure you want to cancel this request?');
-    if (!ok) {
-      return;
-    }
-
-    this.appointmentService.deleteBooking(row.bookingId).subscribe({
-      next: () => {
-        const remainingOnPage = this.appointments().length - 1;
-        if (remainingOnPage === 0 && this.page() > 1) {
-          this.page.update((p) => p - 1);
-        }
-        this.loadAppointments();
-      },
-      error: () => this.error.set('Delete failed. Please try again.')
-    });
-  }
-
-  confirmDelete(row: AppointmentDto): void {
-    const ok = window.confirm(
-      `Remove appointment for "${row.patientName}" on ${this.formatDateTime(row.appointmentDate)}?`
-    );
-    if (!ok) {
-      return;
-    }
-
-    this.appointmentService.delete(row.id).subscribe({
-      next: () => {
-        const remainingOnPage = this.appointments().length - 1;
-        if (remainingOnPage === 0 && this.page() > 1) {
-          this.page.update((p) => p - 1);
-        }
-        this.loadAppointments();
-      },
-      error: () => this.error.set('Delete failed. Please try again.')
-    });
-  }
-
-  onProcessBooking(row: AppointmentDto): void {
-    if (!this.isBookingRow(row)) {
-      return;
-    }
-
+  onSendToSchedule(row: BookingApiDto): void {
     const matched = this.getRegisteredPatient(row);
     if (!matched) {
       this.createProfile(row);
       return;
     }
 
-    if (row.bookingId == null) {
-      return;
-    }
-
-    void this.router.navigate(['/schedule'], {
-      state: {
-        bookingId: row.bookingId,
-        patientName: row.patientName,
-        phone: row.phoneNumber ?? '',
-        phone_number: row.phoneNumber ?? '',
-        phoneNumber: row.phoneNumber ?? '',
-        appointmentDate: row.appointmentDate,
-        patientId: matched.id
+    const bookingId = row.id;
+    this.bookingService.scheduleBooking(bookingId, matched.id).subscribe({
+      next: () => {
+        this.successMessage.set('Request moved to Schedule.');
+        this.loadTriageInbox();
+      },
+      error: () => {
+        this.error.set('Could not move request to schedule.');
       }
     });
   }
 
-  formatDateTime(iso: string): string {
+  formatDateTime(iso?: string | null): string {
+    if (!iso) {
+      return 'N/A';
+    }
     const d = new Date(iso);
     return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(d);
   }
 
-  canEdit(): boolean {
-    return this.auth.isClinicalStaff();
-  }
-
-  canEditRow(row: AppointmentDto): boolean {
-    return this.canEdit() && (row.source ?? 'appointments') === 'appointments';
-  }
-
-  isBookingRow(row: AppointmentDto): boolean {
-    return row.source === 'bookings';
-  }
-
-  isRegisteredBooking(row: AppointmentDto): boolean {
+  isRegisteredBooking(row: BookingApiDto): boolean {
     return this.getRegisteredPatient(row) != null;
   }
 
-  getProcessLabel(row: AppointmentDto): string {
-    return this.isRegisteredBooking(row) ? 'Add to Schedule' : 'Create Profile';
+  getProcessLabel(row: BookingApiDto): string {
+    return this.isRegisteredBooking(row) ? 'Send to Schedule' : 'Create Profile';
   }
 
-  createProfile(row: AppointmentDto): void {
-    const [firstName, ...lastNameParts] = row.patientName.trim().split(/\s+/);
+  createProfile(row: BookingApiDto): void {
+    const [firstName, ...lastNameParts] = row.patient_name.trim().split(/\s+/);
     const lastName = lastNameParts.join(' ');
-    const patientName = row.patientName.trim();
-    const phoneNumber = (row.phoneNumber ?? '').trim();
+    const patientName = row.patient_name.trim();
+    const phoneNumber = (row.phone_number ?? '').trim();
 
     void this.router.navigate(['/patients/new'], {
       queryParams: {
@@ -375,17 +181,13 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
       });
   }
 
-  private getRegisteredPatient(row: AppointmentDto): PatientDto | null {
-    if (!this.isBookingRow(row)) {
-      return null;
-    }
-
-    const normalizedName = this.normalizeName(row.patientName);
+  private getRegisteredPatient(row: BookingApiDto): PatientDto | null {
+    const normalizedName = this.normalizeName(row.patient_name);
     if (!normalizedName) {
       return null;
     }
 
-    const normalizedPhone = this.normalizePhone(row.phoneNumber ?? null);
+    const normalizedPhone = this.normalizePhone(row.phone_number ?? null);
     const byNameAndPhone = normalizedPhone
       ? this.registeredPatientMap()[`name:${normalizedName}|phone:${normalizedPhone}`]
       : null;
@@ -402,5 +204,15 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
 
   private normalizePhone(value: string | null): string {
     return (value ?? '').replace(/\D+/g, '');
+  }
+
+  private applyClientFilter(): void {
+    const term = this.searchTerm().trim().toLowerCase();
+    if (!term) {
+      this.triageRows.set(this.allTriageRows());
+      return;
+    }
+    const filtered = this.allTriageRows().filter((row) => row.patient_name.toLowerCase().includes(term));
+    this.triageRows.set(filtered);
   }
 }

@@ -1,5 +1,6 @@
 using api.Application.Abstractions;
 using api.Application.Bookings;
+using api.Domain.Entities;
 
 namespace api.Application.Services;
 
@@ -37,6 +38,8 @@ public class BookingService(IBookingRepository bookingRepository) : IBookingServ
     public Task<bool> ScheduleAsync(long bookingId, Guid patientId, CancellationToken cancellationToken = default) =>
         bookingRepository.ScheduleAsync(bookingId, patientId, cancellationToken);
 
-    public Task<IReadOnlyList<BookingListItem>> GetActiveListAsync(CancellationToken cancellationToken = default) =>
-        bookingRepository.GetActiveListAsync(cancellationToken);
+    public Task<IReadOnlyList<BookingListItem>> GetListByStatusAsync(
+        BookingStatus status,
+        CancellationToken cancellationToken = default) =>
+        bookingRepository.GetListByStatusAsync(status, cancellationToken);
 }

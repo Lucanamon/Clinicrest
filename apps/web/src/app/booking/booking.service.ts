@@ -1,4 +1,4 @@
-import { HttpClient, HttpContext } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -24,5 +24,18 @@ export class BookingService {
 
   cancelBooking(bookingId: number): Observable<unknown> {
     return this.http.delete(`${environment.apiUrl}/bookings/${bookingId}`, { context: this.context });
+  }
+
+  scheduleBooking(bookingId: number, patientId: string): Observable<unknown> {
+    return this.http.put(
+      `${environment.apiUrl}/bookings/${bookingId}/schedule`,
+      { patient_id: patientId },
+      { context: this.context }
+    );
+  }
+
+  getBookings(status: 'ACTIVE' | 'SCHEDULED' | 'CANCELLED' = 'ACTIVE'): Observable<BookingApiDto[]> {
+    const params = new HttpParams().set('status', status);
+    return this.http.get<BookingApiDto[]>(`${environment.apiUrl}/bookings`, { params, context: this.context });
   }
 }

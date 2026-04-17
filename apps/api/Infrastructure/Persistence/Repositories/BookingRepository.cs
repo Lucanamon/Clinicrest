@@ -144,7 +144,9 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
         return true;
     }
 
-    public async Task<IReadOnlyList<BookingListItem>> GetActiveListAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<BookingListItem>> GetListByStatusAsync(
+        BookingStatus status,
+        CancellationToken cancellationToken = default)
     {
         await EnsureBookingPatientIdColumnAsync(cancellationToken);
 
@@ -152,20 +154,27 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             from booking in dbContext.Bookings.AsNoTracking()
             join slot in dbContext.Slots.AsNoTracking() on booking.SlotId equals slot.Id into slots
             from slot in slots.DefaultIfEmpty()
-            where booking.Status == BookingStatus.Active
+            join patient in dbContext.Patients.AsNoTracking() on booking.PatientId equals patient.Id into patients
+            from patient in patients.DefaultIfEmpty()
+            join doctor in dbContext.Users.AsNoTracking() on booking.DoctorId equals doctor.Id into doctors
+            from doctor in doctors.DefaultIfEmpty()
+            where booking.Status == status
             orderby booking.CreatedAt descending
             select new BookingListItem
             {
                 Id = booking.Id,
                 SlotId = booking.SlotId,
                 PatientName = booking.PatientName ?? "Guest",
-                PhoneNumber = booking.PhoneNumber,
+                PhoneNumber = patient != null && !string.IsNullOrWhiteSpace(patient.PhoneNumber)
+                    ? patient.PhoneNumber
+                    : booking.PhoneNumber,
                 PatientId = booking.PatientId,
-                Status = booking.Status == BookingStatus.Active
-                    ? "ACTIVE"
-                    : booking.Status == BookingStatus.Scheduled
-                        ? "SCHEDULED"
-                        : "CANCELLED",
+                DoctorName = doctor != null ? doctor.Username : null,
+                Status = booking.Status == BookingStatus.Scheduled
+                    ? "SCHEDULED"
+                    : booking.Status == BookingStatus.Cancelled
+                        ? "CANCELLED"
+                        : "ACTIVE",
                 CreatedAt = booking.CreatedAt,
                 SlotStartTime = slot != null ? slot.StartTime : null
             }).ToListAsync(cancellationToken);

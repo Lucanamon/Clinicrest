@@ -19,6 +19,9 @@ public class BookingListItem
     [JsonPropertyName("patient_id")]
     public Guid? PatientId { get; set; }
 
+    [JsonPropertyName("doctor_name")]
+    public string? DoctorName { get; set; }
+
     public string Status { get; set; } = "ACTIVE";
 
     [JsonPropertyName("created_at")]

@@ -1,221 +1,83 @@
-import { isPlatformBrowser } from '@angular/common';
-import { Component, HostListener, OnInit, PLATFORM_ID, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
-import { AppointmentService } from '../../appointment/appointment.service';
-import { PatientDto, PatientService } from '../../patient/patient.service';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { BookingApiDto } from '../../booking/booking-api.types';
+import { BookingService } from '../../booking/booking.service';
 import { AuthService } from '../../services/auth';
-import { DoctorListItemDto, UsersService } from '../../users/users.service';
-
-type ScheduleNavigationState = {
-  bookingId?: number;
-  patientName?: string;
-  phone?: string | null;
-  phone_number?: string | null;
-  phoneNumber?: string | null;
-  appointmentDate?: string;
-  patientId?: string | null;
-};
 
 @Component({
   selector: 'app-schedule-page',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [RouterLink],
   templateUrl: './schedule.page.html',
   styleUrl: './schedule.page.scss'
 })
 export class SchedulePage implements OnInit {
-  private readonly fb = inject(FormBuilder);
-  private readonly router = inject(Router);
-  private readonly usersService = inject(UsersService);
-  private readonly appointmentService = inject(AppointmentService);
-  private readonly patientService = inject(PatientService);
-  private readonly platformId = inject(PLATFORM_ID);
+  private readonly bookingService = inject(BookingService);
   readonly auth = inject(AuthService);
 
-  readonly loadingDoctors = signal(true);
-  readonly saving = signal(false);
+  readonly loading = signal(true);
   readonly error = signal<string | null>(null);
-  readonly patientName = signal('');
-  readonly phoneNumber = signal('');
-  readonly bookingId = signal<number | null>(null);
-  readonly patientId = signal<string | null>(null);
-  readonly doctors = signal<DoctorListItemDto[]>([]);
-  readonly hasSaved = signal(false);
-  private loadedPatient: PatientDto | null = null;
+  readonly scheduledRows = signal<BookingApiDto[]>([]);
 
-  readonly form = this.fb.nonNullable.group({
-    doctorId: ['', Validators.required],
-    appointmentDate: ['', Validators.required],
-    phone: ['', [Validators.pattern(/^[0-9+]*$/)]],
-    notes: ['', [Validators.maxLength(2000)]]
-  });
+  private readonly phonePattern = /^[0-9+]*$/;
 
   ngOnInit(): void {
-    const nav = this.router.getCurrentNavigation();
-    const browserState = isPlatformBrowser(this.platformId) ? (history.state as ScheduleNavigationState) : {};
-    const state = (nav?.extras.state ?? browserState) as ScheduleNavigationState;
+    this.loadScheduled();
+  }
 
-    const bookingId = state.bookingId;
-    if (!bookingId) {
-      void this.router.navigateByUrl('/appointments');
+  get doctorLabel(): string {
+    const profile = this.auth.getCurrentUserProfile();
+    return profile?.displayName?.trim() || this.auth.getUsername();
+  }
+
+  formatDateTime(iso?: string | null): string {
+    if (!iso) {
+      return 'N/A';
+    }
+    const d = new Date(iso);
+    return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(d);
+  }
+
+  getValidPhone(raw?: string | null): string {
+    const value = (raw ?? '').trim();
+    if (!value) {
+      return 'Not provided';
+    }
+    return this.phonePattern.test(value) ? value : 'Invalid phone format';
+  }
+
+  cancelScheduledAppointment(row: BookingApiDto): void {
+    const ok = window.confirm(`Cancel appointment for ${row.patient_name}? This will free slot capacity.`);
+    if (!ok) {
       return;
     }
 
-    this.bookingId.set(bookingId);
-    this.patientName.set((state.patientName ?? '').trim());
-    this.patientId.set(state.patientId?.trim() || null);
-    this.initForm(state);
-    this.prefillPhoneFromPatientProfile();
-
-    this.loadDoctors();
-  }
-
-  private initForm(state: ScheduleNavigationState): void {
-    const statePhone = (state.phone ?? state.phone_number ?? state.phoneNumber ?? '').trim();
-    const appointmentDate = state.appointmentDate ? this.toDatetimeLocal(state.appointmentDate) : '';
-    this.phoneNumber.set(statePhone);
-    this.form.patchValue({
-      appointmentDate,
-      phone: statePhone
-    });
-  }
-
-  private loadDoctors(): void {
-    this.loadingDoctors.set(true);
-    this.usersService.getDoctors().subscribe({
-      next: (rows) => {
-        this.doctors.set(rows);
-        this.loadingDoctors.set(false);
-      },
-      error: () => {
-        this.error.set('Could not load doctors.');
-        this.loadingDoctors.set(false);
-      }
-    });
-  }
-
-  submit(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-
-    const bookingId = this.bookingId();
-    const patientId = this.patientId();
-    if (!bookingId || !patientId) {
-      this.error.set('This booking is missing patient linkage. Please create or select a patient profile first.');
-      return;
-    }
-
-    const value = this.form.getRawValue();
-    this.saving.set(true);
-    this.error.set(null);
-
-    this.appointmentService
-      .finalize({
-        booking_id: bookingId,
-        patient_id: patientId,
-        doctor_id: value.doctorId,
-        appointment_date: new Date(value.appointmentDate).toISOString(),
-        phone_number: value.phone.trim() ? value.phone.trim() : null,
-        notes: value.notes.trim() ? value.notes.trim() : null
-      })
+    this.bookingService
+      .cancelBooking(row.id)
       .subscribe({
-        next: () => {
-          this.persistUpdatedPatientPhoneIfConfirmed(value.phone.trim(), patientId);
-        },
-        error: (err) => {
-          const apiMessage = err?.error?.message;
-          this.error.set(typeof apiMessage === 'string' && apiMessage ? apiMessage : 'Could not finalize appointment.');
-          this.saving.set(false);
+        next: () => this.loadScheduled(),
+        error: () => {
+          this.error.set('Could not cancel scheduled appointment.');
         }
       });
   }
 
   hasUnsavedChanges(): boolean {
-    return !this.hasSaved() && this.form.dirty;
+    return false;
   }
 
-  onPhoneInput(value: string): void {
-    const sanitized = value.replace(/[^0-9+]/g, '');
-    this.form.controls.phone.setValue(sanitized);
-    this.phoneNumber.set(sanitized);
-  }
-
-  @HostListener('window:beforeunload', ['$event'])
-  onBeforeUnload(event: BeforeUnloadEvent): void {
-    if (!this.hasUnsavedChanges()) {
-      return;
-    }
-    event.preventDefault();
-    event.returnValue = '';
-  }
-
-  private toDatetimeLocal(iso: string): string {
-    const d = new Date(iso);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-
-  private prefillPhoneFromPatientProfile(): void {
-    const patientId = this.patientId();
-    if (!patientId) {
-      return;
-    }
-
-    this.patientService.getPatientById(patientId).subscribe({
-      next: (patient) => {
-        this.loadedPatient = patient;
-        const patientPhone = patient.phoneNumber?.trim() ?? '';
-        if (!patientPhone) {
-          return;
-        }
-
-        this.phoneNumber.set(patientPhone);
-        this.form.controls.phone.setValue(patientPhone);
+  private loadScheduled(): void {
+    this.loading.set(true);
+    this.error.set(null);
+    this.bookingService.getBookings('SCHEDULED').subscribe({
+      next: (rows) => {
+        this.scheduledRows.set(rows);
+        this.loading.set(false);
       },
       error: () => {
-        this.error.set('Could not load patient profile details.');
+        this.error.set('Could not load scheduled appointments.');
+        this.loading.set(false);
       }
-    });
-  }
-
-  private persistUpdatedPatientPhoneIfConfirmed(updatedPhone: string, patientId: string): void {
-    const profilePhone = this.loadedPatient?.phoneNumber?.trim() ?? '';
-    const isPhoneUpdated = Boolean(updatedPhone) && updatedPhone !== profilePhone;
-
-    if (!isPhoneUpdated || !this.loadedPatient || !isPlatformBrowser(this.platformId)) {
-      this.onFinalizeCompleted();
-      return;
-    }
-
-    const shouldUpdateProfile = window.confirm("Would you like to update the patient's profile with this new number?");
-    if (!shouldUpdateProfile) {
-      this.onFinalizeCompleted();
-      return;
-    }
-
-    this.patientService
-      .update(patientId, {
-        firstName: this.loadedPatient.firstName,
-        lastName: this.loadedPatient.lastName,
-        dateOfBirth: this.loadedPatient.dateOfBirth,
-        gender: this.loadedPatient.gender,
-        phoneNumber: updatedPhone,
-        underlyingDisease: this.loadedPatient.underlyingDisease ?? null
-      })
-      .subscribe({
-        next: () => this.onFinalizeCompleted(),
-        error: () => this.onFinalizeCompleted()
-      });
-  }
-
-  private onFinalizeCompleted(): void {
-    this.hasSaved.set(true);
-    this.saving.set(false);
-    void this.router.navigate(['/appointments'], {
-      state: { successMessage: 'Appointment finalized successfully.' }
     });
   }
 }
