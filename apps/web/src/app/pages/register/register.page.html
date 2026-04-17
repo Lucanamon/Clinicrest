@@ -6,7 +6,7 @@
         <p class="muted">Enter your phone number to continue to booking request.</p>
       } @else {
         <h1>Guest booking request</h1>
-        <p class="muted">Pick an available slot, enter the patient name, and confirm.</p>
+        <p class="muted">Complete one step at a time.</p>
       }
     </div>
     @if (!isRegisterEntry) {
@@ -28,6 +28,11 @@
     <div class="banner banner--error" role="alert">
       {{ booking.bookingError() }}
       <button type="button" class="linkish" (click)="booking.resetBookingError()">Dismiss</button>
+    </div>
+  }
+  @if (!isRegisterEntry && submitError) {
+    <div class="banner banner--error" role="alert">
+      {{ submitError }}
     </div>
   }
 
@@ -64,80 +69,134 @@
     </form>
   } @else {
     <button type="button" class="btn-secondary back-btn" (click)="goBack()">← Back</button>
-    <div class="request-layout">
-      <section class="card calendar-card">
-        <h2>Available slots</h2>
-
-        @if (booking.loading() && booking.slots().length === 0 && !booking.listError()) {
-          <p class="muted" aria-live="polite">Loading available slots…</p>
-        }
-
-        @if (!booking.loading() && booking.slots().length === 0 && !booking.listError()) {
-          <p class="muted">No available slots right now. Please check again soon.</p>
-        }
-
-        <div class="day-groups" [class.day-groups--updated]="slotsJustUpdated">
-          @for (group of calendarGroups(); track group.ymd) {
-            <article class="day-group">
-              <h3>{{ group.label }}</h3>
-              <ul class="slot-list" role="list">
-                @for (slot of group.slots; track slot.id) {
-                  <li>
-                    <button
-                      type="button"
-                      class="slot-btn"
-                      [class.slot-btn--selected]="selectedSlotId === slot.id"
-                      [disabled]="!isSlotSelectable(slot)"
-                      (click)="selectSlot(slot)"
-                    >
-                      <span>{{ slot.start_time | utcToLocal: 'HH:mm' }}-{{ slot.end_time | utcToLocal: 'HH:mm' }}</span>
-                    <span>Available: {{ availableSlots(slot) }}</span>
-                    </button>
-                  </li>
-                }
-              </ul>
-            </article>
+    <div class="wizard">
+      <section class="card wizard-step">
+        <h2>Step 1: Choose a date</h2>
+        <div class="date-row" role="list">
+          @for (dateOption of dateOptions(); track dateOption.ymd) {
+            <button
+              type="button"
+              class="date-btn"
+              [class.date-btn--selected]="isDateSelected(dateOption.ymd)"
+              (click)="selectDate(dateOption.ymd)"
+            >
+              {{ dateOption.label }}
+            </button>
           }
         </div>
       </section>
 
-      <form class="card form-card" (ngSubmit)="submit()" [formGroup]="form" novalidate>
-        <h2>Complete request</h2>
-        <p class="muted">
-          Selected slot:
-          <strong>{{ selectedSlotSummary || 'None selected' }}</strong>
-        </p>
-
-        <div class="field">
-          <label for="reg-patient">Patient name</label>
-          <input
-            id="reg-patient"
-            type="text"
-            autocomplete="name"
-            formControlName="patientName"
-            placeholder="Full name"
-            [attr.aria-invalid]="form.controls.patientName.invalid && form.controls.patientName.touched"
-          />
-          @if (form.controls.patientName.touched && form.controls.patientName.hasError('required')) {
-            <span class="field-error" role="alert">Patient name is required.</span>
+      @if (canShowStep2()) {
+        <section class="card wizard-step" #step2Section>
+          <h2>Step 2: Choose a time</h2>
+          @if (booking.loading() && !booking.listError()) {
+            <p class="muted" aria-live="polite">Loading times…</p>
           }
-          @if (form.controls.patientName.touched && form.controls.patientName.hasError('maxlength')) {
-            <span class="field-error" role="alert">Name is too long.</span>
+          @if (!booking.loading() && booking.slots().length === 0 && !booking.listError()) {
+            <p class="muted">No times are available for this day.</p>
           }
-        </div>
 
-        @if (!selectedSlotId) {
-          <span class="field-error" role="alert">Select a slot before submitting.</span>
-        }
+          <div class="slot-groups">
+            <article class="slot-group">
+              <h3>Morning</h3>
+              <div class="pill-grid">
+                @if (slotsByTimeOfDay().morning.length === 0) {
+                  <p class="muted">No morning times.</p>
+                }
+                @for (slot of slotsByTimeOfDay().morning; track slot.id) {
+                  <button
+                    type="button"
+                    class="time-pill"
+                    [class.time-pill--selected]="selectedSlotId() === slot.id"
+                    [disabled]="!isSlotSelectable(slot)"
+                    (click)="selectSlot(slot)"
+                  >
+                    @if (slot.available_slots <= 0) {
+                      Full
+                    } @else {
+                      {{ slot.start_time | utcToLocal: 'HH:mm' }}
+                    }
+                  </button>
+                }
+              </div>
+            </article>
 
-        <button type="submit" class="btn-primary" [disabled]="isSubmitting || booking.bookingSlotId() !== null || !selectedSlotId">
-          @if (isSubmitting || booking.bookingSlotId()) {
-            Booking…
-          } @else {
-            Confirm booking
-          }
-        </button>
-      </form>
+            <article class="slot-group">
+              <h3>Afternoon</h3>
+              <div class="pill-grid">
+                @if (slotsByTimeOfDay().afternoon.length === 0) {
+                  <p class="muted">No afternoon times.</p>
+                }
+                @for (slot of slotsByTimeOfDay().afternoon; track slot.id) {
+                  <button
+                    type="button"
+                    class="time-pill"
+                    [class.time-pill--selected]="selectedSlotId() === slot.id"
+                    [disabled]="!isSlotSelectable(slot)"
+                    (click)="selectSlot(slot)"
+                  >
+                    @if (slot.available_slots <= 0) {
+                      Full
+                    } @else {
+                      {{ slot.start_time | utcToLocal: 'HH:mm' }}
+                    }
+                  </button>
+                }
+              </div>
+            </article>
+          </div>
+        </section>
+      }
+
+      @if (canShowStep3()) {
+        <form class="card form-card wizard-step" #step3Section (ngSubmit)="submit()" [formGroup]="form" novalidate>
+          <h2>Step 3: Patient details</h2>
+
+          <div class="field">
+            <label for="reg-patient">Patient Full Name</label>
+            <input
+              id="reg-patient"
+              type="text"
+              autocomplete="name"
+              formControlName="patientName"
+              placeholder="Type full name"
+              [attr.aria-invalid]="form.controls.patientName.invalid && form.controls.patientName.touched"
+            />
+            @if (form.controls.patientName.touched && form.controls.patientName.hasError('required')) {
+              <span class="field-error" role="alert">Please enter your name.</span>
+            }
+          </div>
+
+          <div class="field">
+            <label for="reg-phone-request">Phone Number</label>
+            <input
+              id="reg-phone-request"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="tel"
+              formControlName="phoneNumber"
+              (input)="onPhoneInput($event)"
+              placeholder="Type phone number"
+              [attr.aria-invalid]="form.controls.phoneNumber.invalid && form.controls.phoneNumber.touched"
+            />
+            @if (form.controls.phoneNumber.touched && form.controls.phoneNumber.hasError('required')) {
+              <span class="field-error" role="alert">Please enter your phone number.</span>
+            }
+            @if (form.controls.phoneNumber.touched && form.controls.phoneNumber.hasError('pattern')) {
+              <span class="field-error" role="alert">Please use digits only.</span>
+            }
+          </div>
+
+          <button type="submit" class="btn-primary" [disabled]="!canSubmitRequest()">
+            @if (isSubmitting || booking.bookingSlotId()) {
+              Sending request...
+            } @else {
+              Send Booking Request
+            }
+          </button>
+        </form>
+      }
     </div>
   }
 </div>

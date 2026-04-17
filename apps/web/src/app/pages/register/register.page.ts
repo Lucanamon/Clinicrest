@@ -1,17 +1,19 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { startWith } from 'rxjs/operators';
 import { BookingStateService } from '../../booking/booking-state.service';
+import { BookingService } from '../../booking/booking.service';
 import type { SlotApiDto } from '../../booking/booking-api.types';
 import { UtcToLocalPipe } from '../../booking/utc-to-local.pipe';
 
 const GUEST_PHONE_STORAGE_KEY = 'clinicrest.guestPhone';
 
-interface CalendarGroup {
+interface DateOption {
   ymd: string;
   label: string;
-  slots: SlotApiDto[];
 }
 
 @Component({
@@ -24,22 +26,55 @@ interface CalendarGroup {
 export class RegisterPage implements OnInit, OnDestroy {
   private static readonly SUCCESS_MESSAGE_DURATION_MS = 2500;
   private successMessageTimeoutId: ReturnType<typeof setTimeout> | null = null;
-  private updatedSlotsTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly bookingService = inject(BookingService);
   readonly booking = inject(BookingStateService);
-  selectedSlotId: number | null = null;
-  selectedSlotSummary: string | null = null;
+  @ViewChild('step2Section') private step2Section?: ElementRef<HTMLElement>;
+  @ViewChild('step3Section') private step3Section?: ElementRef<HTMLElement>;
+  readonly selectedDateYmd = signal<string | null>(null);
+  readonly selectedSlotId = signal<number | null>(null);
   successMessage: string | null = null;
-  slotsJustUpdated = false;
+  submitError: string | null = null;
   isSubmitting = false;
   isRegisterEntry = false;
   backPhoneQuery: string | null = null;
 
   readonly form = this.fb.nonNullable.group({
-    phoneNumber: [''],
-    patientName: [''],
+    phoneNumber: ['', [Validators.required, Validators.pattern(/^[0-9]*$/)]],
+    patientName: ['', [Validators.required, Validators.maxLength(500)]],
+  });
+  private readonly formStatus = toSignal(this.form.statusChanges.pipe(startWith(this.form.status)), {
+    initialValue: this.form.status,
+  });
+  readonly dateOptions = computed(() => this.buildDateOptions());
+  readonly slotsByTimeOfDay = computed(() => {
+    const now = Date.now();
+    const morning: SlotApiDto[] = [];
+    const afternoon: SlotApiDto[] = [];
+    for (const slot of this.booking.slots()) {
+      const start = new Date(slot.start_time);
+      if (start.getTime() < now) {
+        continue;
+      }
+      if (start.getHours() < 12) {
+        morning.push(slot);
+      } else {
+        afternoon.push(slot);
+      }
+    }
+    const sortByTime = (a: SlotApiDto, b: SlotApiDto) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+    morning.sort(sortByTime);
+    afternoon.sort(sortByTime);
+    return { morning, afternoon };
+  });
+  readonly canShowStep2 = computed(() => this.selectedDateYmd() !== null);
+  readonly canShowStep3 = computed(() => this.selectedSlotId() !== null);
+  readonly canSubmitRequest = computed(() => {
+    const hasSlot = this.selectedSlotId() !== null;
+    const formReady = this.formStatus() === 'VALID';
+    return hasSlot && formReady && !this.isSubmitting && this.booking.bookingSlotId() === null;
   });
 
   ngOnInit(): void {
@@ -49,8 +84,6 @@ export class RegisterPage implements OnInit, OnDestroy {
     if (storedPhone) {
       this.form.controls.phoneNumber.setValue(this.normalizePhoneDigits(storedPhone));
     }
-
-    this.applyFormValidatorsForRoute();
 
     this.route.queryParamMap.subscribe((params) => {
       const phoneFromQuery = params.get('phone')?.trim() || null;
@@ -63,27 +96,15 @@ export class RegisterPage implements OnInit, OnDestroy {
     });
 
     if (!this.isRegisterEntry) {
-      this.booking.loadAllSlots();
+      const firstDate = this.dateOptions()[0];
+      if (firstDate) {
+        this.selectDate(firstDate.ymd, false);
+      }
     }
-  }
-
-  private applyFormValidatorsForRoute(): void {
-    const phone = this.form.controls.phoneNumber;
-    const patient = this.form.controls.patientName;
-    if (this.isRegisterEntry) {
-      phone.setValidators([Validators.required, Validators.pattern(/^[0-9]*$/)]);
-      patient.clearValidators();
-    } else {
-      phone.clearValidators();
-      patient.setValidators([Validators.required, Validators.maxLength(500)]);
-    }
-    phone.updateValueAndValidity({ emitEvent: false });
-    patient.updateValueAndValidity({ emitEvent: false });
   }
 
   ngOnDestroy(): void {
     this.clearSuccessMessageTimer();
-    this.clearUpdatedSlotsTimer();
   }
 
   submit(): void {
@@ -92,34 +113,45 @@ export class RegisterPage implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.isSubmitting || this.form.invalid || this.booking.loading() || !this.selectedSlotId) {
+    if (!this.canSubmitRequest()) {
       this.form.markAllAsTouched();
+      if (!this.selectedSlotId()) {
+        this.submitError = 'Please choose a time first.';
+      }
       return;
     }
 
-    const { patientName } = this.form.getRawValue();
+    const { patientName, phoneNumber } = this.form.getRawValue();
+    const selectedSlotId = this.selectedSlotId();
+    if (selectedSlotId === null) {
+      return;
+    }
     const name = patientName.trim();
-    this.booking.resetBookingError();
+    const normalizedPhone = this.normalizePhoneDigits(phoneNumber);
+    this.storeGuestPhone(normalizedPhone);
     this.successMessage = null;
+    this.submitError = null;
     this.isSubmitting = true;
 
-    this.booking.bookSlot(this.selectedSlotId, name).subscribe({
+    this.bookingService.createBooking(selectedSlotId, name).subscribe({
       next: () => {
-        this.booking.loadAllSlots();
-        this.selectedSlotId = null;
-        this.selectedSlotSummary = null;
+        this.booking.loadSlots();
+        this.selectedSlotId.set(null);
+        this.form.controls.patientName.reset('');
         this.showSuccessFeedback();
         this.isSubmitting = false;
       },
       error: () => {
+        this.submitError = 'We could not send your request. Please try again.';
         this.isSubmitting = false;
       },
     });
   }
 
   continueToRequest(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
+    const phoneControl = this.form.controls.phoneNumber;
+    if (phoneControl.invalid) {
+      phoneControl.markAsTouched();
       return;
     }
 
@@ -162,30 +194,46 @@ export class RegisterPage implements OnInit, OnDestroy {
     if (!this.isSlotSelectable(slot)) {
       return;
     }
-    this.selectedSlotId = slot.id;
-    this.selectedSlotSummary = `${new Date(slot.start_time).toLocaleDateString()} ${new Date(slot.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    this.selectedSlotId.set(slot.id);
+    this.submitError = null;
     this.successMessage = null;
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        this.step3Section?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 80);
+    }
   }
 
   isSlotSelectable(slot: SlotApiDto): boolean {
     const startsAt = new Date(slot.start_time).getTime();
     const now = Date.now();
-    return this.availableSlots(slot) > 0 && startsAt >= now;
-  }
-
-  availableSlots(slot: SlotApiDto): number {
-    return Math.max(0, slot.capacity - slot.booked_count);
+    return slot.available_slots > 0 && startsAt >= now;
   }
 
   refreshSlots(): void {
-    this.booking.loadAllSlots();
+    this.booking.loadSlots();
+  }
+
+  selectDate(ymd: string, scrollToTimes = true): void {
+    this.selectedDateYmd.set(ymd);
+    this.selectedSlotId.set(null);
+    this.submitError = null;
+    this.successMessage = null;
+    this.booking.setSelectedDateYmd(ymd);
+    if (scrollToTimes && typeof window !== 'undefined') {
+      setTimeout(() => {
+        this.step2Section?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 80);
+    }
+  }
+
+  isDateSelected(ymd: string): boolean {
+    return this.selectedDateYmd() === ymd;
   }
 
   private showSuccessFeedback(): void {
-    this.successMessage = 'Booking complete';
-    this.slotsJustUpdated = true;
+    this.successMessage = 'Booking request sent.';
     this.clearSuccessMessageTimer();
-    this.clearUpdatedSlotsTimer();
 
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -195,11 +243,6 @@ export class RegisterPage implements OnInit, OnDestroy {
       this.successMessage = null;
       this.successMessageTimeoutId = null;
     }, RegisterPage.SUCCESS_MESSAGE_DURATION_MS);
-
-    this.updatedSlotsTimeoutId = setTimeout(() => {
-      this.slotsJustUpdated = false;
-      this.updatedSlotsTimeoutId = null;
-    }, 1200);
   }
 
   private clearSuccessMessageTimer(): void {
@@ -209,34 +252,22 @@ export class RegisterPage implements OnInit, OnDestroy {
     }
   }
 
-  private clearUpdatedSlotsTimer(): void {
-    if (this.updatedSlotsTimeoutId !== null) {
-      clearTimeout(this.updatedSlotsTimeoutId);
-      this.updatedSlotsTimeoutId = null;
-    }
-  }
-
-  calendarGroups(): CalendarGroup[] {
-    const grouped = new Map<string, SlotApiDto[]>();
-    const slots = this.booking.slots();
-    for (const slot of slots) {
-      const date = new Date(slot.start_time);
-      const ymd = this.toYmdUtc(date);
-      const list = grouped.get(ymd);
-      if (list) {
-        list.push(slot);
-      } else {
-        grouped.set(ymd, [slot]);
+  private buildDateOptions(days = 7): DateOption[] {
+    const items: DateOption[] = [];
+    const now = new Date();
+    for (let i = 0; i < days; i += 1) {
+      const d = new Date(now);
+      d.setDate(now.getDate() + i);
+      const ymd = this.toYmdUtc(d);
+      let label = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+      if (i === 0) {
+        label = 'Today';
+      } else if (i === 1) {
+        label = 'Tomorrow';
       }
+      items.push({ ymd, label });
     }
-
-    return Array.from(grouped.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([ymd, daySlots]) => ({
-        ymd,
-        label: new Date(`${ymd}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }),
-        slots: daySlots.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()),
-      }));
+    return items;
   }
 
   private toYmdUtc(value: Date): string {
