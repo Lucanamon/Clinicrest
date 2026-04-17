@@ -49,13 +49,13 @@
           <button class="user-pill" type="button" (click)="goToProfile()">
             <img
               class="avatar-image"
-              [src]="profileImageUrl || defaultAvatar"
+              [src]="avatarUrl()"
               (error)="onImageError($event)"
               width="35"
               height="35"
               alt="User avatar"
             />
-            <span class="name">{{ displayName }}</span>
+            <span class="name">{{ displayName() }}</span>
           </button>
 
           <button class="logout-btn" type="button" (click)="logout()">Logout</button>

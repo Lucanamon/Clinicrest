@@ -307,6 +307,10 @@ public class ApplicationDbContext : DbContext
                 .HasColumnName("patient_name")
                 .HasMaxLength(500);
 
+            entity.Property(b => b.PhoneNumber)
+                .HasColumnName("phone_number")
+                .HasMaxLength(32);
+
             entity.Property(b => b.Status)
                 .IsRequired()
                 .HasColumnName("status")

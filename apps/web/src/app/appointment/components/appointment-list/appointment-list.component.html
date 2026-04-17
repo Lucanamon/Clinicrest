@@ -121,17 +121,18 @@
             <td>{{ row.status }}</td>
             <td>{{ formatDateTime(row.createdAt) }}</td>
             <td class="row-actions">
-              @if (canEdit()) {
+              <button type="button" class="link-btn" (click)="createProfile(row)">Create Profile</button>
+              @if (canEditRow(row)) {
                 <a [routerLink]="['/appointments', row.id, 'edit']" class="link-btn">Edit</a>
               }
-              @if (auth.isRootAdmin()) {
+              @if (auth.isRootAdmin() && canEditRow(row)) {
                 <button type="button" class="danger-btn" (click)="confirmDelete(row)">Delete</button>
               }
             </td>
           </tr>
           @if (appointments().length === 0) {
             <tr>
-              <td colspan="6" class="empty-state">No appointments found.</td>
+              <td colspan="6" class="empty-state">No appointments today.</td>
             </tr>
           }
         </tbody>

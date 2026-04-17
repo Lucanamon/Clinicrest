@@ -33,6 +33,17 @@ export class PatientFormComponent {
     underlyingDisease: ['', Validators.maxLength(1000)]
   });
 
+  constructor() {
+    const prefill = this.readPrefillFromNavigationState();
+    if (prefill) {
+      this.form.patchValue({
+        firstName: prefill.firstName,
+        lastName: prefill.lastName,
+        phoneNumber: prefill.phoneNumber
+      });
+    }
+  }
+
   onPhoneInput(): void {
     const phoneControl = this.form.controls.phoneNumber;
     const numericOnly = phoneControl.value.replace(/\D/g, '');
@@ -103,5 +114,34 @@ export class PatientFormComponent {
     }
 
     return 'Date of birth cannot be in the future';
+  }
+
+  private readPrefillFromNavigationState(): { firstName: string; lastName: string; phoneNumber: string } | null {
+    const state = (this.router.getCurrentNavigation()?.extras.state ?? history.state) as
+      | {
+          patient_name?: string;
+          phone_number?: string;
+          prefillPatient?: { firstName?: string; lastName?: string; phoneNumber?: string };
+        }
+      | undefined;
+
+    const queryParams = this.router.parseUrl(this.router.url).queryParams;
+    const queryPatientName = String(queryParams['patient_name'] ?? '').trim();
+    const queryPhoneNumber = String(queryParams['phone_number'] ?? '').trim();
+
+    const patientName = (state?.patient_name ?? queryPatientName).trim();
+    const navigationPhone = (state?.phone_number ?? queryPhoneNumber).trim();
+    const [derivedFirstName, ...derivedLastNameParts] = patientName.split(/\s+/).filter(Boolean);
+    const derivedLastName = derivedLastNameParts.join(' ');
+
+    if (!state?.prefillPatient && !patientName && !navigationPhone) {
+      return null;
+    }
+
+    return {
+      firstName: (state?.prefillPatient?.firstName ?? derivedFirstName ?? '').trim(),
+      lastName: (state?.prefillPatient?.lastName ?? derivedLastName).trim(),
+      phoneNumber: (state?.prefillPatient?.phoneNumber ?? navigationPhone).replace(/\D/g, '')
+    };
   }
 }

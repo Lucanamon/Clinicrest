@@ -13,6 +13,9 @@ public class BookingDto
     [JsonPropertyName("patient_name")]
     public string PatientName { get; set; } = string.Empty;
 
+    [JsonPropertyName("phone_number")]
+    public string? PhoneNumber { get; set; }
+
     [JsonPropertyName("status")]
     public string Status { get; set; } = "ACTIVE";
 

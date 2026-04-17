@@ -5,10 +5,10 @@ using api.Application.Services;
 using api.Domain;
 using api.Domain.Entities;
 using api.Infrastructure.Auth;
+using api.Infrastructure.DependencyInjection;
 using api.Infrastructure.Integrations;
 using api.Infrastructure.Middleware;
 using api.Infrastructure.Persistence;
-using api.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -28,15 +28,21 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
     builder.Services.AddHealthChecks();
+    const string CorsPolicyName = "WebClientCors";
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy(CorsPolicyName, policy =>
+        {
+            policy.WithOrigins("http://localhost:4200", "http://127.0.0.1:4200")
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
+    });
 
     builder.Services.AddHttpContextAccessor();
-    builder.Services.AddScoped<ICurrentUserAccessor, HttpContextCurrentUserAccessor>();
-    builder.Services.AddScoped<IAuditLogService, AuditLogService>();
-
-    builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    {
-        options.UseNpgsql(connectionString);
-    });
+    builder.Services.AddClinicrestPersistence(connectionString);
+    builder.Services.AddClinicrestRepositories();
+    builder.Services.AddClinicrestApplicationServices();
 
     var jwtSection = builder.Configuration.GetSection("Jwt");
     var jwtIssuer = jwtSection["Issuer"] ?? "clinicrest-api";
@@ -68,23 +74,6 @@ try
         options.FallbackPolicy = null;
     });
 
-    builder.Services.AddScoped<IPatientRepository, PatientRepository>();
-    builder.Services.AddScoped<IPatientService, PatientService>();
-    builder.Services.AddScoped<IGoogleDriveService, GoogleDriveService>();
-    builder.Services.AddScoped<IUserRepository, UserRepository>();
-    builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
-    builder.Services.AddScoped<IAppointmentService, AppointmentService>();
-    builder.Services.AddScoped<IBacklogRepository, BacklogRepository>();
-    builder.Services.AddScoped<IBacklogService, BacklogService>();
-    builder.Services.AddScoped<IGlobalSearchService, GlobalSearchService>();
-    builder.Services.AddScoped<IUserService, UserService>();
-    builder.Services.AddScoped<ISlotRepository, SlotRepository>();
-    builder.Services.AddScoped<ISlotService, SlotService>();
-    builder.Services.AddScoped<IBookingRepository, BookingRepository>();
-    builder.Services.AddScoped<IBookingService, BookingService>();
-
-    builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
-
     var app = builder.Build();
 
     app.UseExceptionHandler(errorApp =>
@@ -110,6 +99,7 @@ try
     app.UseMiddleware<ExceptionHandlingMiddleware>();
     app.UseHttpsRedirection();
     app.UseStaticFiles();
+    app.UseCors(CorsPolicyName);
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseMiddleware<ActivityMiddleware>();

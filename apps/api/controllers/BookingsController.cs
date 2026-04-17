@@ -1,18 +1,38 @@
 using api.Application.Abstractions;
 using api.Application.Bookings;
 using api.Application.Time;
+using api.Domain;
 using api.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class BookingsController(IBookingService bookingService) : ControllerBase
+public class BookingsController(
+    IBookingService bookingService,
+    ILogger<BookingsController> logger) : ControllerBase
 {
+    [Authorize(Roles = Roles.ClinicalAll)]
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<BookingListItem>>> List(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var rows = await bookingService.GetActiveListAsync(cancellationToken);
+            return Ok(rows ?? Array.Empty<BookingListItem>());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to load bookings list.");
+            return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+        }
+    }
+
     [AllowAnonymous]
-    [HttpPost("/api/bookings")]
+    [HttpPost]
     public async Task<ActionResult<BookingDto>> Create(
         [FromBody] CreateBookingRequest request,
         CancellationToken cancellationToken = default)
@@ -39,6 +59,7 @@ public class BookingsController(IBookingService bookingService) : ControllerBase
             Id = booking.Id,
             SlotId = booking.SlotId,
             PatientName = booking.PatientName,
+            PhoneNumber = booking.PhoneNumber,
             Status = booking.Status == BookingStatus.Active ? "ACTIVE" : "CANCELLED",
             CreatedAt = UtcInstant.AsUtcDateTimeOffset(booking.CreatedAt)
         };
@@ -47,7 +68,7 @@ public class BookingsController(IBookingService bookingService) : ControllerBase
     }
 
     [AllowAnonymous]
-    [HttpDelete("/api/bookings/{id:long}")]
+    [HttpDelete("{id:long}")]
     public async Task<IActionResult> Cancel(long id, CancellationToken cancellationToken = default)
     {
         var result = await bookingService.CancelAsync(id, cancellationToken);

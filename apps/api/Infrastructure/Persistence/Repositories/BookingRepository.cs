@@ -14,13 +14,14 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
     public async Task<BookingResult> CreateAsync(
         long slotId,
         string patientName,
+        string? phoneNumber,
         CancellationToken cancellationToken = default)
     {
         for (var attempt = 1; ; attempt++)
         {
             try
             {
-                return await CreateSingleAttemptAsync(slotId, patientName, cancellationToken);
+                return await CreateSingleAttemptAsync(slotId, patientName, phoneNumber, cancellationToken);
             }
             catch (Exception ex) when (IsTransientPostgres(ex) && attempt < MaxSerializationRetries)
             {
@@ -33,6 +34,7 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
     private async Task<BookingResult> CreateSingleAttemptAsync(
         long slotId,
         string patientName,
+        string? phoneNumber,
         CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
@@ -58,6 +60,7 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             {
                 SlotId = slotId,
                 PatientName = patientName,
+                PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim(),
                 Status = BookingStatus.Active,
                 CreatedAt = DateTime.UtcNow
             };
@@ -123,6 +126,26 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             await transaction.RollbackAsync(cancellationToken);
             throw;
         }
+    }
+
+    public async Task<IReadOnlyList<BookingListItem>> GetActiveListAsync(CancellationToken cancellationToken = default)
+    {
+        return await (
+            from booking in dbContext.Bookings.AsNoTracking()
+            join slot in dbContext.Slots.AsNoTracking() on booking.SlotId equals slot.Id into slots
+            from slot in slots.DefaultIfEmpty()
+            where booking.Status == BookingStatus.Active
+            orderby booking.CreatedAt descending
+            select new BookingListItem
+            {
+                Id = booking.Id,
+                SlotId = booking.SlotId,
+                PatientName = booking.PatientName ?? "Guest",
+                PhoneNumber = booking.PhoneNumber,
+                Status = booking.Status == BookingStatus.Active ? "ACTIVE" : "CANCELLED",
+                CreatedAt = booking.CreatedAt,
+                SlotStartTime = slot != null ? slot.StartTime : null
+            }).ToListAsync(cancellationToken);
     }
 
     private static BookingResult Failed(string error)

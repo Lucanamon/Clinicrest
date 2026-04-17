@@ -8,6 +8,8 @@ public class Booking
 
     public string PatientName { get; set; } = string.Empty;
 
+    public string? PhoneNumber { get; set; }
+
     public BookingStatus Status { get; set; }
 
     public DateTime CreatedAt { get; set; }

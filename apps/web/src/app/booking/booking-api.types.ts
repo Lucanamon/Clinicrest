@@ -22,6 +22,7 @@ export interface BookingApiDto {
   id: number;
   slot_id: number;
   patient_name: string;
+  phone_number?: string | null;
   status: string;
   created_at: ApiUtcIsoString;
 }

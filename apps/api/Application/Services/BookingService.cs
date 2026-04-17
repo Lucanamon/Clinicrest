@@ -27,9 +27,13 @@ public class BookingService(IBookingRepository bookingRepository) : IBookingServ
             };
         }
 
-        return await bookingRepository.CreateAsync(slotId, patientName, cancellationToken);
+        var phoneNumber = request.ResolvePhoneNumber();
+        return await bookingRepository.CreateAsync(slotId, patientName, phoneNumber, cancellationToken);
     }
 
     public Task<CancelBookingResult> CancelAsync(long bookingId, CancellationToken cancellationToken = default) =>
         bookingRepository.CancelAsync(bookingId, cancellationToken);
+
+    public Task<IReadOnlyList<BookingListItem>> GetActiveListAsync(CancellationToken cancellationToken = default) =>
+        bookingRepository.GetActiveListAsync(cancellationToken);
 }

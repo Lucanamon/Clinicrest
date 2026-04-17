@@ -1,5 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { AuthService } from '../services/auth';
 import { GlobalSearchComponent } from './global-search/global-search.component';
 import { RightSidebarComponent } from '../right-sidebar/right-sidebar.component';
@@ -15,20 +16,19 @@ export class DashboardLayoutComponent {
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   readonly defaultAvatar = 'https://ui-avatars.com/api/?name=User';
+  private readonly profile = toSignal(this.auth.currentUserProfile$, {
+    initialValue: this.auth.getCurrentUserProfile()
+  });
 
-  get username(): string {
-    return this.auth.getUsername();
-  }
+  readonly displayName = computed(() => {
+    const profile = this.profile();
+    return profile?.displayName?.trim() || profile?.username || this.auth.getUsername();
+  });
 
-  get displayName(): string {
-    const profile = this.auth.getCurrentUserProfile();
-    return profile?.displayName?.trim() || profile?.username || this.username;
-  }
-
-  get profileImageUrl(): string | null {
-    const profile = this.auth.getCurrentUserProfile();
-    return profile?.profileImageUrl?.trim() || null;
-  }
+  readonly avatarUrl = computed(() => {
+    const profile = this.profile();
+    return profile?.profileImageUrl?.trim() || this.defaultAvatar;
+  });
 
   get canAccessBooking(): boolean {
     const role = this.auth.getRole();

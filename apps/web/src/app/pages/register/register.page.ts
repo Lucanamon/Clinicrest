@@ -6,6 +6,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { startWith } from 'rxjs/operators';
 import { BookingStateService } from '../../booking/booking-state.service';
 import { BookingService } from '../../booking/booking.service';
+import { AppointmentService } from '../../appointment/appointment.service';
 import type { SlotApiDto } from '../../booking/booking-api.types';
 import { UtcToLocalPipe } from '../../booking/utc-to-local.pipe';
 
@@ -30,6 +31,7 @@ export class RegisterPage implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly bookingService = inject(BookingService);
+  private readonly appointmentService = inject(AppointmentService);
   readonly booking = inject(BookingStateService);
   @ViewChild('step2Section') private step2Section?: ElementRef<HTMLElement>;
   @ViewChild('step3Section') private step3Section?: ElementRef<HTMLElement>;
@@ -133,9 +135,10 @@ export class RegisterPage implements OnInit, OnDestroy {
     this.submitError = null;
     this.isSubmitting = true;
 
-    this.bookingService.createBooking(selectedSlotId, name).subscribe({
+    this.bookingService.createBooking(selectedSlotId, name, normalizedPhone).subscribe({
       next: () => {
         this.booking.loadSlots();
+        this.appointmentService.requestRefresh();
         this.selectedSlotId.set(null);
         this.form.controls.patientName.reset('');
         this.showSuccessFeedback();

@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { NgFor } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Subject, Subscription, debounceTime } from 'rxjs';
 import { AppointmentDto, AppointmentService } from '../../appointment.service';
@@ -27,6 +27,7 @@ import { AuthService } from '../../../services/auth';
 export class AppointmentListComponent implements OnInit, OnDestroy {
   private readonly appointmentService = inject(AppointmentService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly router = inject(Router);
   readonly auth = inject(AuthService);
 
   readonly searchTerm = toSignal(this.appointmentService.getSearchTerm(), {
@@ -62,6 +63,7 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
 
   private readonly searchTrigger$ = new Subject<void>();
   private searchDebounceSub?: Subscription;
+  private refreshSub?: Subscription;
 
   constructor() {
     if (!isPlatformBrowser(this.platformId)) {
@@ -77,10 +79,15 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
       this.page.set(1);
       this.loadAppointments();
     });
+    this.refreshSub = this.appointmentService.getRefreshStream().subscribe(() => {
+      this.page.set(1);
+      this.loadAppointments();
+    });
   }
 
   ngOnDestroy(): void {
     this.searchDebounceSub?.unsubscribe();
+    this.refreshSub?.unsubscribe();
     this.searchTrigger$.complete();
   }
 
@@ -162,7 +169,23 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
           this.totalCount.set(res.totalCount);
           this.loading.set(false);
         },
-        error: () => {
+        error: (err) => {
+          console.error('Error:', err);
+          if (err?.status === 500) {
+            console.error('Appointments API returned 500. Full error response:', {
+              status: err.status,
+              statusText: err.statusText,
+              url: err.url,
+              message: err.message,
+              error: err.error,
+              raw: err
+            });
+          }
+          const errorPayload = typeof err?.error === 'string' ? err.error.trim().toLowerCase() : '';
+          if (errorPayload.startsWith('<!doctype html') || errorPayload.startsWith('<html')) {
+            console.error('Appointments endpoint returned HTML instead of JSON. Check API route/base URL.');
+          }
+          console.error('Failed to load appointments list', err);
           this.error.set('Unable to load appointments. Please try again.');
           this.loading.set(false);
         }
@@ -196,5 +219,36 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
 
   canEdit(): boolean {
     return this.auth.isClinicalStaff();
+  }
+
+  canEditRow(row: AppointmentDto): boolean {
+    return this.canEdit() && (row.source ?? 'appointments') === 'appointments';
+  }
+
+  isBookingRow(row: AppointmentDto): boolean {
+    return row.source === 'bookings';
+  }
+
+  createProfile(row: AppointmentDto): void {
+    const [firstName, ...lastNameParts] = row.patientName.trim().split(/\s+/);
+    const lastName = lastNameParts.join(' ');
+    const patientName = row.patientName.trim();
+    const phoneNumber = (row.phoneNumber ?? '').trim();
+
+    void this.router.navigate(['/patients/new'], {
+      queryParams: {
+        patient_name: patientName,
+        phone_number: phoneNumber
+      },
+      state: {
+        patient_name: patientName,
+        phone_number: phoneNumber,
+        prefillPatient: {
+          firstName: firstName ?? '',
+          lastName,
+          phoneNumber
+        }
+      }
+    });
   }
 }

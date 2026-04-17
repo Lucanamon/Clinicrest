@@ -14,10 +14,10 @@ export class BookingService {
     return this.http.get<SlotApiDto[]>(`${environment.apiUrl}/slots`, { context: this.context });
   }
 
-  createBooking(slotId: number, patientName: string): Observable<BookingApiDto> {
+  createBooking(slotId: number, patientName: string, phoneNumber?: string | null): Observable<BookingApiDto> {
     return this.http.post<BookingApiDto>(
       `${environment.apiUrl}/bookings`,
-      { slot_id: slotId, patient_name: patientName.trim() },
+      { slot_id: slotId, patient_name: patientName.trim(), phone_number: phoneNumber?.trim() || null },
       { context: this.context },
     );
   }
