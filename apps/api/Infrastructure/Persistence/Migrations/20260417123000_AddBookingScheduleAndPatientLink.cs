@@ -1,10 +1,14 @@
 using System;
+using api.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace api.Infrastructure.Persistence.Migrations
 {
+    [DbContext(typeof(ApplicationDbContext))]
+    [Migration("20260417123000_AddBookingScheduleAndPatientLink")]
     public partial class AddBookingScheduleAndPatientLink : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

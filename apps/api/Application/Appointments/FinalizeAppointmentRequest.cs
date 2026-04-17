@@ -21,6 +21,10 @@ public class FinalizeAppointmentRequest
     [JsonPropertyName("appointment_date")]
     public DateTime AppointmentDate { get; set; }
 
+    [JsonPropertyName("phone_number")]
+    [RegularExpression(@"^[0-9+]*$")]
+    public string? PhoneNumber { get; set; }
+
     [MaxLength(2000)]
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }

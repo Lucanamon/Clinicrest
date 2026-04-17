@@ -142,6 +142,10 @@ public class ApplicationDbContext : DbContext
                 .IsRequired()
                 .HasColumnType("timestamp with time zone");
 
+            entity.Property(a => a.PhoneNumber)
+                .HasColumnName("phone_number")
+                .HasMaxLength(32);
+
             entity.Property(a => a.CreatedAt)
                 .IsRequired()
                 .HasDefaultValueSql("NOW()");

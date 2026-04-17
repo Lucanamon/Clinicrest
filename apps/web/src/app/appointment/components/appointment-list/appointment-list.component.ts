@@ -281,6 +281,8 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
       state: {
         bookingId: row.bookingId,
         patientName: row.patientName,
+        phone: row.phoneNumber ?? '',
+        phone_number: row.phoneNumber ?? '',
         phoneNumber: row.phoneNumber ?? '',
         appointmentDate: row.appointmentDate,
         patientId: matched.id

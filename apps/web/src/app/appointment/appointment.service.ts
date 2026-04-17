@@ -36,6 +36,7 @@ export interface FinalizeAppointmentRequest {
   patient_id: string;
   doctor_id: string;
   appointment_date: string;
+  phone_number?: string | null;
   notes?: string | null;
 }
 

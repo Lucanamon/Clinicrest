@@ -130,6 +130,10 @@ export class PatientService {
     return this.http.get<PatientDto>(`${this.baseUrl}/${id}`);
   }
 
+  getPatientById(id: string): Observable<PatientDto> {
+    return this.getById(id);
+  }
+
   create(data: CreatePatientRequest): Observable<PatientDto> {
     return this.http.post<PatientDto>(this.baseUrl, data);
   }

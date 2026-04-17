@@ -14,6 +14,8 @@ public class AppointmentDto
 
     public DateTime AppointmentDate { get; set; }
 
+    public string? PhoneNumber { get; set; }
+
     public string Status { get; set; } = string.Empty;
 
     public string? Notes { get; set; }

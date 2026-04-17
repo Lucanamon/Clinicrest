@@ -12,6 +12,8 @@ public class Appointment : AuditableEntity
 
     public DateTime AppointmentDate { get; set; }
 
+    public string? PhoneNumber { get; set; }
+
     public required string Status { get; set; }
 
     public string? Notes { get; set; }

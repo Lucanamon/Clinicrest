@@ -17,7 +17,17 @@
       </div>
       <div>
         <span class="label">Phone</span>
-        <p>{{ phoneNumber() || 'Not provided' }}</p>
+        <input
+          type="tel"
+          [value]="form.controls.phone.value"
+          (input)="onPhoneInput($any($event.target).value)"
+          placeholder="Enter phone number"
+          pattern="^[0-9+]*$"
+          [disabled]="saving()"
+        />
+        @if ((form.controls.phone.dirty || form.controls.phone.touched) && form.controls.phone.hasError('pattern')) {
+          <small class="field-error">Phone number can only contain digits and '+'.</small>
+        }
       </div>
     </div>
   </section>
@@ -55,7 +65,12 @@
     </section>
 
     <button type="submit" class="primary-btn" [disabled]="saving() || loadingDoctors()">
-      {{ saving() ? 'Saving...' : 'Confirm & Schedule' }}
+      @if (saving()) {
+        <span class="spinner" aria-hidden="true"></span>
+        Saving...
+      } @else {
+        Confirm &amp; Schedule
+      }
     </button>
   </form>
 </main>

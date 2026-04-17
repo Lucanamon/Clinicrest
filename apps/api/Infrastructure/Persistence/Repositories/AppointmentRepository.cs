@@ -133,6 +133,7 @@ public class AppointmentRepository(ApplicationDbContext dbContext) : IAppointmen
         Guid patientId,
         Guid doctorId,
         DateTime appointmentDate,
+        string? phoneNumber,
         string? notes,
         CancellationToken cancellationToken = default)
     {
@@ -142,6 +143,8 @@ public class AppointmentRepository(ApplicationDbContext dbContext) : IAppointmen
             ADD COLUMN IF NOT EXISTS patient_id uuid;
             ALTER TABLE bookings
             ADD COLUMN IF NOT EXISTS doctor_id uuid;
+            ALTER TABLE appointments
+            ADD COLUMN IF NOT EXISTS phone_number character varying(32);
             """,
             cancellationToken);
 
@@ -157,6 +160,7 @@ public class AppointmentRepository(ApplicationDbContext dbContext) : IAppointmen
 
             booking.PatientId = patientId;
             booking.DoctorId = doctorId;
+            booking.PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? "000-000-0000" : phoneNumber.Trim();
             booking.Status = BookingStatus.Scheduled;
 
             var appointment = new Appointment
@@ -165,6 +169,7 @@ public class AppointmentRepository(ApplicationDbContext dbContext) : IAppointmen
                 PatientId = patientId,
                 DoctorId = doctorId,
                 AppointmentDate = appointmentDate,
+                PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? "000-000-0000" : phoneNumber.Trim(),
                 Status = "Scheduled",
                 Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
             };

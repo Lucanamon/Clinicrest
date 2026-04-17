@@ -123,11 +123,16 @@ public class AppointmentService(
             doctorId = currentUserId;
         }
 
+        var resolvedPhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber)
+            ? patient.PhoneNumber?.Trim()
+            : request.PhoneNumber.Trim();
+
         var finalized = await appointmentRepository.FinalizeFromBookingAsync(
             request.BookingId,
             request.PatientId,
             doctorId,
             NormalizeUtc(request.AppointmentDate),
+            resolvedPhoneNumber,
             request.Notes,
             cancellationToken);
 
@@ -238,6 +243,7 @@ public class AppointmentService(
             DoctorId = appointment.DoctorId,
             DoctorName = appointment.Doctor.Username,
             AppointmentDate = appointment.AppointmentDate,
+            PhoneNumber = appointment.PhoneNumber,
             Status = appointment.Status,
             Notes = appointment.Notes,
             CreatedAt = appointment.CreatedAt

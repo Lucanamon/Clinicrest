@@ -25,6 +25,7 @@ public interface IAppointmentRepository
         Guid patientId,
         Guid doctorId,
         DateTime appointmentDate,
+        string? phoneNumber,
         string? notes,
         CancellationToken cancellationToken = default);
 }
