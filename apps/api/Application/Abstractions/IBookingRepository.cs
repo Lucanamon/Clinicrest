@@ -12,5 +12,7 @@ public interface IBookingRepository
 
     Task<CancelBookingResult> CancelAsync(long bookingId, CancellationToken cancellationToken = default);
 
+    Task<bool> ScheduleAsync(long bookingId, Guid patientId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<BookingListItem>> GetActiveListAsync(CancellationToken cancellationToken = default);
 }

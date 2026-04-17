@@ -291,7 +291,7 @@ public class ApplicationDbContext : DbContext
         {
             entity.ToTable(
                 "bookings",
-                t => t.HasCheckConstraint("chk_bookings_status", "\"status\" IN ('ACTIVE', 'CANCELLED')"));
+                t => t.HasCheckConstraint("chk_bookings_status", "\"status\" IN ('ACTIVE', 'SCHEDULED', 'CANCELLED')"));
 
             entity.HasKey(b => b.Id);
 
@@ -311,12 +311,26 @@ public class ApplicationDbContext : DbContext
                 .HasColumnName("phone_number")
                 .HasMaxLength(32);
 
+            entity.Property(b => b.PatientId)
+                .HasColumnName("patient_id");
+
+            entity.Property(b => b.DoctorId)
+                .HasColumnName("doctor_id");
+
             entity.Property(b => b.Status)
                 .IsRequired()
                 .HasColumnName("status")
                 .HasConversion(
-                    v => v == BookingStatus.Active ? "ACTIVE" : "CANCELLED",
-                    v => v == "ACTIVE" ? BookingStatus.Active : BookingStatus.Cancelled)
+                    v => v == BookingStatus.Active
+                        ? "ACTIVE"
+                        : v == BookingStatus.Scheduled
+                            ? "SCHEDULED"
+                            : "CANCELLED",
+                    v => v == "ACTIVE"
+                        ? BookingStatus.Active
+                        : v == "SCHEDULED"
+                            ? BookingStatus.Scheduled
+                            : BookingStatus.Cancelled)
                 .HasColumnType("text");
 
             entity.Property(b => b.CreatedAt)

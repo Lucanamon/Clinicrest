@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
 import { bookingInternalGuard } from './guards/booking-internal.guard';
 import { rootRedirectGuard } from './guards/root-redirect.guard';
+import { scheduleUnsavedChangesGuard } from './guards/schedule-unsaved-changes.guard';
 import { AppointmentFormComponent } from './appointment/components/appointment-form/appointment-form.component';
 import { AppointmentListComponent } from './appointment/components/appointment-list/appointment-list.component';
 import { BacklogFormComponent } from './backlog/components/backlog-form/backlog-form.component';
@@ -23,6 +24,7 @@ import { RegisterPage } from './pages/register/register.page';
 import { ProfileComponent } from './profile/profile.component';
 import { UserFormComponent } from './users/components/user-form/user-form.component';
 import { UserListComponent } from './users/components/user-list/user-list.component';
+import { SchedulePage } from './pages/schedule/schedule.page';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', canActivate: [rootRedirectGuard], children: [] },
@@ -62,6 +64,11 @@ export const routes: Routes = [
           { path: ':id/edit', component: AppointmentFormComponent },
           { path: ':id', component: AppointmentFormComponent }
         ]
+      },
+      {
+        path: 'schedule',
+        component: SchedulePage,
+        canDeactivate: [scheduleUnsavedChangesGuard]
       },
       {
         path: 'backlog',

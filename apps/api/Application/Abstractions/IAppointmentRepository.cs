@@ -19,4 +19,12 @@ public interface IAppointmentRepository
     Task<bool> UpdateAsync(Appointment appointment, CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<Appointment?> FinalizeFromBookingAsync(
+        long bookingId,
+        Guid patientId,
+        Guid doctorId,
+        DateTime appointmentDate,
+        string? notes,
+        CancellationToken cancellationToken = default);
 }

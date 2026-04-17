@@ -10,6 +10,10 @@ public class Booking
 
     public string? PhoneNumber { get; set; }
 
+    public Guid? PatientId { get; set; }
+
+    public Guid? DoctorId { get; set; }
+
     public BookingStatus Status { get; set; }
 
     public DateTime CreatedAt { get; set; }

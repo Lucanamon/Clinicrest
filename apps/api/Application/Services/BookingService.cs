@@ -34,6 +34,9 @@ public class BookingService(IBookingRepository bookingRepository) : IBookingServ
     public Task<CancelBookingResult> CancelAsync(long bookingId, CancellationToken cancellationToken = default) =>
         bookingRepository.CancelAsync(bookingId, cancellationToken);
 
+    public Task<bool> ScheduleAsync(long bookingId, Guid patientId, CancellationToken cancellationToken = default) =>
+        bookingRepository.ScheduleAsync(bookingId, patientId, cancellationToken);
+
     public Task<IReadOnlyList<BookingListItem>> GetActiveListAsync(CancellationToken cancellationToken = default) =>
         bookingRepository.GetActiveListAsync(cancellationToken);
 }

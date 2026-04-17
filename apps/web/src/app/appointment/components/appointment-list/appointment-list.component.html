@@ -75,6 +75,10 @@
     </label>
   </div>
 
+  @if (successMessage()) {
+    <section class="state-card success">{{ successMessage() }}</section>
+  }
+
   @if (loading()) {
     <section class="state-card">Loading appointments...</section>
   } @else if (error()) {
@@ -110,23 +114,34 @@
                 }
               </button>
             </th>
-            <th scope="col"></th>
+            <th scope="col">Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let row of appointments()">
-            <td class="primary-cell">{{ row.patientName }}</td>
+            <td class="primary-cell">
+              {{ row.patientName }}
+              @if (isRegisteredBooking(row)) {
+                <span class="metric-pill">Registered</span>
+              }
+            </td>
             <td>{{ row.doctorName }}</td>
             <td>{{ formatDateTime(row.appointmentDate) }}</td>
             <td>{{ row.status }}</td>
             <td>{{ formatDateTime(row.createdAt) }}</td>
             <td class="row-actions">
-              <button type="button" class="link-btn" (click)="createProfile(row)">Create Profile</button>
-              @if (canEditRow(row)) {
-                <a [routerLink]="['/appointments', row.id, 'edit']" class="link-btn">Edit</a>
-              }
-              @if (auth.isRootAdmin() && canEditRow(row)) {
-                <button type="button" class="danger-btn" (click)="confirmDelete(row)">Delete</button>
+              @if (isBookingRow(row)) {
+                <button type="button" class="danger-btn" (click)="confirmCancelBooking(row)">Cancel</button>
+                <button type="button" class="action-btn" (click)="onProcessBooking(row)">
+                  {{ getProcessLabel(row) }}
+                </button>
+              } @else {
+                @if (canEditRow(row)) {
+                  <a [routerLink]="['/appointments', row.id, 'edit']" class="link-btn">Edit</a>
+                }
+                @if (auth.isRootAdmin() && canEditRow(row)) {
+                  <button type="button" class="danger-btn" (click)="confirmDelete(row)">Delete</button>
+                }
               }
             </td>
           </tr>

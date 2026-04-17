@@ -60,7 +60,12 @@ public class BookingsController(
             SlotId = booking.SlotId,
             PatientName = booking.PatientName,
             PhoneNumber = booking.PhoneNumber,
-            Status = booking.Status == BookingStatus.Active ? "ACTIVE" : "CANCELLED",
+            Status = booking.Status switch
+            {
+                BookingStatus.Active => "ACTIVE",
+                BookingStatus.Scheduled => "SCHEDULED",
+                _ => "CANCELLED"
+            },
             CreatedAt = UtcInstant.AsUtcDateTimeOffset(booking.CreatedAt)
         };
 
@@ -80,6 +85,27 @@ public class BookingsController(
         if (result.SlotMissing)
         {
             return BadRequest(new { message = "Could not update slot capacity for this cancellation." });
+        }
+
+        return Ok(new { success = true });
+    }
+
+    [Authorize(Roles = Roles.ClinicalAll)]
+    [HttpPut("{id:long}/schedule")]
+    public async Task<IActionResult> Schedule(
+        long id,
+        [FromBody] ScheduleBookingRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.PatientId == Guid.Empty)
+        {
+            return BadRequest(new { message = "patient_id is required." });
+        }
+
+        var updated = await bookingService.ScheduleAsync(id, request.PatientId, cancellationToken);
+        if (!updated)
+        {
+            return NotFound();
         }
 
         return Ok(new { success = true });

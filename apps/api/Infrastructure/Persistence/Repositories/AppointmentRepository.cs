@@ -2,6 +2,7 @@ using api.Application.Abstractions;
 using api.Application.Appointments;
 using api.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace api.Infrastructure.Persistence.Repositories;
 
@@ -125,6 +126,64 @@ public class AppointmentRepository(ApplicationDbContext dbContext) : IAppointmen
     {
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    public async Task<Appointment?> FinalizeFromBookingAsync(
+        long bookingId,
+        Guid patientId,
+        Guid doctorId,
+        DateTime appointmentDate,
+        string? notes,
+        CancellationToken cancellationToken = default)
+    {
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            ALTER TABLE bookings
+            ADD COLUMN IF NOT EXISTS patient_id uuid;
+            ALTER TABLE bookings
+            ADD COLUMN IF NOT EXISTS doctor_id uuid;
+            """,
+            cancellationToken);
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        try
+        {
+            var booking = await dbContext.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
+            if (booking is null || booking.Status != BookingStatus.Active)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return null;
+            }
+
+            booking.PatientId = patientId;
+            booking.DoctorId = doctorId;
+            booking.Status = BookingStatus.Scheduled;
+
+            var appointment = new Appointment
+            {
+                Id = Guid.NewGuid(),
+                PatientId = patientId,
+                DoctorId = doctorId,
+                AppointmentDate = appointmentDate,
+                Status = "Scheduled",
+                Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
+            };
+
+            dbContext.Appointments.Add(appointment);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return await dbContext.Appointments
+                .AsNoTracking()
+                .Include(a => a.Patient)
+                .Include(a => a.Doctor)
+                .FirstOrDefaultAsync(a => a.Id == appointment.Id, cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 
     private static readonly HashSet<string> AllowedSortProperties =

@@ -159,6 +159,45 @@ public class AppointmentsController(IAppointmentService appointmentService) : Co
         return NoContent();
     }
 
+    [HttpPost("finalize")]
+    [Authorize(Roles = Roles.ClinicalAll)]
+    public async Task<ActionResult<AppointmentDto>> Finalize(
+        [FromBody] FinalizeAppointmentRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        }
+
+        var userId = TryGetUserId(User);
+        if (!userId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var role = User.FindFirstValue(ClaimTypes.Role);
+        if (string.IsNullOrWhiteSpace(role))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var finalized = await appointmentService.FinalizeAsync(request, userId.Value, role, cancellationToken);
+            if (finalized is null)
+            {
+                return NotFound(new { message = "Booking not found or already processed." });
+            }
+
+            return Ok(finalized);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     private static Guid? TryGetUserId(ClaimsPrincipal user)
     {
         var sub = user.FindFirstValue(ClaimTypes.NameIdentifier)

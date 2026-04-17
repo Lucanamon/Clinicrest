@@ -1,0 +1,61 @@
+<main class="schedule-shell">
+  <header class="schedule-header">
+    <h1>Finalize Appointment</h1>
+    <a routerLink="/appointments" class="back-link">Back to Appointments</a>
+  </header>
+
+  @if (error()) {
+    <section class="state-card error">{{ error() }}</section>
+  }
+
+  <section class="card patient-card">
+    <h2>Patient Info</h2>
+    <div class="info-grid">
+      <div>
+        <span class="label">Name</span>
+        <p>{{ patientName() || 'Unknown' }}</p>
+      </div>
+      <div>
+        <span class="label">Phone</span>
+        <p>{{ phoneNumber() || 'Not provided' }}</p>
+      </div>
+    </div>
+  </section>
+
+  <form class="card schedule-form" [formGroup]="form" (ngSubmit)="submit()">
+    <section class="form-section">
+      <h2>Doctor Assignment</h2>
+      <label class="field">
+        <span>Assign to Doctor</span>
+        <select formControlName="doctorId" [disabled]="loadingDoctors() || saving()">
+          <option value="">Select a doctor</option>
+          @for (doctor of doctors(); track doctor.id) {
+            <option [value]="doctor.id">{{ doctor.username }}</option>
+          }
+        </select>
+      </label>
+    </section>
+
+    <section class="form-section">
+      <h2>Final Details</h2>
+      <label class="field">
+        <span>Date &amp; Time</span>
+        <input type="datetime-local" formControlName="appointmentDate" [disabled]="saving()" />
+      </label>
+
+      <label class="field">
+        <span>Notes</span>
+        <textarea
+          rows="4"
+          formControlName="notes"
+          placeholder="Patient has a fever"
+          [disabled]="saving()"
+        ></textarea>
+      </label>
+    </section>
+
+    <button type="submit" class="primary-btn" [disabled]="saving() || loadingDoctors()">
+      {{ saving() ? 'Saving...' : 'Confirm & Schedule' }}
+    </button>
+  </form>
+</main>

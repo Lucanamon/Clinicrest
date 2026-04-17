@@ -17,6 +17,8 @@ export interface AppointmentDto {
   source?: 'appointments' | 'bookings';
   slotId?: number;
   phoneNumber?: string | null;
+  bookingId?: number;
+  linkedPatientId?: string | null;
 }
 
 export interface CreateAppointmentRequest {
@@ -28,6 +30,14 @@ export interface CreateAppointmentRequest {
 }
 
 export type UpdateAppointmentRequest = CreateAppointmentRequest;
+
+export interface FinalizeAppointmentRequest {
+  booking_id: number;
+  patient_id: string;
+  doctor_id: string;
+  appointment_date: string;
+  notes?: string | null;
+}
 
 export interface GetAppointmentsParams {
   pageNumber?: number;
@@ -202,6 +212,18 @@ export class AppointmentService {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 
+  deleteBooking(id: number): Observable<unknown> {
+    return this.http.delete(`${this.bookingsUrl}/${id}`);
+  }
+
+  scheduleBooking(id: number, patientId: string): Observable<unknown> {
+    return this.http.put(`${this.bookingsUrl}/${id}/schedule`, { patient_id: patientId });
+  }
+
+  finalize(data: FinalizeAppointmentRequest): Observable<AppointmentDto> {
+    return this.http.post<AppointmentDto>(`${this.baseUrl}/finalize`, data);
+  }
+
   private mapBookingsToPagedResult(
     bookings: BookingListItemDto[],
     params?: GetAppointmentsParams
@@ -219,7 +241,9 @@ export class AppointmentService {
         notes: null,
         createdAt: booking.created_at ?? booking.createdAt ?? '',
         source: 'bookings' as const,
-        slotId: booking.slot_id ?? booking.slotId
+        slotId: booking.slot_id ?? booking.slotId,
+        bookingId: booking.id,
+        linkedPatientId: booking.patient_id ?? booking.patientId ?? null
       }))
       .filter((row) => this.filterByParams(row, params));
 
@@ -296,4 +320,6 @@ interface BookingListItemDto {
   createdAt?: string;
   slot_start_time?: string | null;
   slotStartTime?: string | null;
+  patient_id?: string | null;
+  patientId?: string | null;
 }

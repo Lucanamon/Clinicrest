@@ -31,4 +31,10 @@ public interface IAppointmentService
         CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<AppointmentDto?> FinalizeAsync(
+        FinalizeAppointmentRequest request,
+        Guid currentUserId,
+        string currentRole,
+        CancellationToken cancellationToken = default);
 }

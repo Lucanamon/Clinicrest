@@ -13,9 +13,10 @@ import { NgFor } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Subject, Subscription, debounceTime } from 'rxjs';
+import { EMPTY, Subject, Subscription, debounceTime, expand, map, reduce } from 'rxjs';
 import { AppointmentDto, AppointmentService } from '../../appointment.service';
 import { AuthService } from '../../../services/auth';
+import { PatientDto, PatientService } from '../../../patient/patient.service';
 
 @Component({
   selector: 'app-appointment-list',
@@ -28,6 +29,7 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
   private readonly appointmentService = inject(AppointmentService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly router = inject(Router);
+  private readonly patientService = inject(PatientService);
   readonly auth = inject(AuthService);
 
   readonly searchTerm = toSignal(this.appointmentService.getSearchTerm(), {
@@ -51,6 +53,8 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
   readonly toDate = signal('');
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  readonly successMessage = signal<string | null>(null);
+  readonly registeredPatientMap = signal<Record<string, PatientDto>>({});
 
   readonly totalPages = computed(() => {
     const total = this.totalCount();
@@ -64,6 +68,7 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
   private readonly searchTrigger$ = new Subject<void>();
   private searchDebounceSub?: Subscription;
   private refreshSub?: Subscription;
+  private successTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     if (!isPlatformBrowser(this.platformId)) {
@@ -75,6 +80,25 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    const successFromNavigation = this.router.getCurrentNavigation()?.extras.state?.['successMessage'] as string | undefined;
+    const successFromHistory =
+      isPlatformBrowser(this.platformId) &&
+      !successFromNavigation &&
+      typeof history.state?.successMessage === 'string'
+        ? (history.state.successMessage as string)
+        : undefined;
+    const success = successFromNavigation ?? successFromHistory;
+    if (success) {
+      this.successMessage.set(success);
+      if (this.successTimeoutId !== null) {
+        clearTimeout(this.successTimeoutId);
+      }
+      this.successTimeoutId = setTimeout(() => {
+        this.successMessage.set(null);
+        this.successTimeoutId = null;
+      }, 3500);
+    }
+
     this.searchDebounceSub = this.searchTrigger$.pipe(debounceTime(300)).subscribe(() => {
       this.page.set(1);
       this.loadAppointments();
@@ -89,6 +113,10 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
     this.searchDebounceSub?.unsubscribe();
     this.refreshSub?.unsubscribe();
     this.searchTrigger$.complete();
+    if (this.successTimeoutId !== null) {
+      clearTimeout(this.successTimeoutId);
+      this.successTimeoutId = null;
+    }
   }
 
   onSearchChange(value: string): void {
@@ -165,6 +193,7 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
       })
       .subscribe({
         next: (res) => {
+          this.updateRegisteredPatientMap();
           this.appointments.set(res.items);
           this.totalCount.set(res.totalCount);
           this.loading.set(false);
@@ -192,6 +221,27 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
       });
   }
 
+  confirmCancelBooking(row: AppointmentDto): void {
+    if (!this.isBookingRow(row) || row.bookingId == null) {
+      return;
+    }
+    const ok = window.confirm('Are you sure you want to cancel this request?');
+    if (!ok) {
+      return;
+    }
+
+    this.appointmentService.deleteBooking(row.bookingId).subscribe({
+      next: () => {
+        const remainingOnPage = this.appointments().length - 1;
+        if (remainingOnPage === 0 && this.page() > 1) {
+          this.page.update((p) => p - 1);
+        }
+        this.loadAppointments();
+      },
+      error: () => this.error.set('Delete failed. Please try again.')
+    });
+  }
+
   confirmDelete(row: AppointmentDto): void {
     const ok = window.confirm(
       `Remove appointment for "${row.patientName}" on ${this.formatDateTime(row.appointmentDate)}?`
@@ -212,6 +262,32 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
     });
   }
 
+  onProcessBooking(row: AppointmentDto): void {
+    if (!this.isBookingRow(row)) {
+      return;
+    }
+
+    const matched = this.getRegisteredPatient(row);
+    if (!matched) {
+      this.createProfile(row);
+      return;
+    }
+
+    if (row.bookingId == null) {
+      return;
+    }
+
+    void this.router.navigate(['/schedule'], {
+      state: {
+        bookingId: row.bookingId,
+        patientName: row.patientName,
+        phoneNumber: row.phoneNumber ?? '',
+        appointmentDate: row.appointmentDate,
+        patientId: matched.id
+      }
+    });
+  }
+
   formatDateTime(iso: string): string {
     const d = new Date(iso);
     return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(d);
@@ -227,6 +303,14 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
 
   isBookingRow(row: AppointmentDto): boolean {
     return row.source === 'bookings';
+  }
+
+  isRegisteredBooking(row: AppointmentDto): boolean {
+    return this.getRegisteredPatient(row) != null;
+  }
+
+  getProcessLabel(row: AppointmentDto): string {
+    return this.isRegisteredBooking(row) ? 'Add to Schedule' : 'Create Profile';
   }
 
   createProfile(row: AppointmentDto): void {
@@ -250,5 +334,71 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
         }
       }
     });
+  }
+
+  private updateRegisteredPatientMap(): void {
+    this.patientService
+      .getPaged({ pageNumber: 1, pageSize: 100, sortBy: 'createdAt', sortDirection: 'desc' })
+      .pipe(
+        expand((page) => {
+          const loaded = page.pageNumber * page.pageSize;
+          if (loaded >= page.totalCount) {
+            return EMPTY;
+          }
+          return this.patientService.getPaged({
+            pageNumber: page.pageNumber + 1,
+            pageSize: page.pageSize,
+            sortBy: 'createdAt',
+            sortDirection: 'desc'
+          });
+        }),
+        map((page) => page.items),
+        reduce((all, items) => all.concat(items), [] as PatientDto[])
+      )
+      .subscribe({
+        next: (patients) => {
+          const mapByKey: Record<string, PatientDto> = {};
+          for (const patient of patients) {
+            const name = this.normalizeName(`${patient.firstName} ${patient.lastName}`);
+            const phone = this.normalizePhone(patient.phoneNumber);
+            if (name) {
+              mapByKey[`name:${name}`] = patient;
+              if (phone) {
+                mapByKey[`name:${name}|phone:${phone}`] = patient;
+              }
+            }
+          }
+          this.registeredPatientMap.set(mapByKey);
+        }
+      });
+  }
+
+  private getRegisteredPatient(row: AppointmentDto): PatientDto | null {
+    if (!this.isBookingRow(row)) {
+      return null;
+    }
+
+    const normalizedName = this.normalizeName(row.patientName);
+    if (!normalizedName) {
+      return null;
+    }
+
+    const normalizedPhone = this.normalizePhone(row.phoneNumber ?? null);
+    const byNameAndPhone = normalizedPhone
+      ? this.registeredPatientMap()[`name:${normalizedName}|phone:${normalizedPhone}`]
+      : null;
+    if (byNameAndPhone) {
+      return byNameAndPhone;
+    }
+
+    return this.registeredPatientMap()[`name:${normalizedName}`] ?? null;
+  }
+
+  private normalizeName(value: string): string {
+    return value.trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  private normalizePhone(value: string | null): string {
+    return (value ?? '').replace(/\D+/g, '');
   }
 }

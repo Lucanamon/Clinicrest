@@ -81,6 +81,59 @@ public class AppointmentService(
         return await appointmentRepository.DeleteAsync(id, cancellationToken);
     }
 
+    public async Task<AppointmentDto?> FinalizeAsync(
+        FinalizeAppointmentRequest request,
+        Guid currentUserId,
+        string currentRole,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Roles.CanAssignAppointmentDoctor(currentRole) && !Roles.IsDoctor(currentRole))
+        {
+            throw new InvalidOperationException("Invalid role for finalizing appointments.");
+        }
+
+        if (request.PatientId == Guid.Empty)
+        {
+            throw new InvalidOperationException("PatientId is required.");
+        }
+
+        var patient = await patientRepository.GetByIdAsync(request.PatientId, cancellationToken);
+        if (patient is null)
+        {
+            throw new InvalidOperationException("Patient not found.");
+        }
+
+        Guid doctorId;
+        if (Roles.CanAssignAppointmentDoctor(currentRole))
+        {
+            if (request.DoctorId == Guid.Empty)
+            {
+                throw new InvalidOperationException("DoctorId is required.");
+            }
+
+            doctorId = request.DoctorId;
+            var doctor = await userRepository.GetByIdAsync(doctorId, cancellationToken);
+            if (doctor is null || !string.Equals(doctor.Role, Roles.Doctor, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Doctor not found or invalid role.");
+            }
+        }
+        else
+        {
+            doctorId = currentUserId;
+        }
+
+        var finalized = await appointmentRepository.FinalizeFromBookingAsync(
+            request.BookingId,
+            request.PatientId,
+            doctorId,
+            NormalizeUtc(request.AppointmentDate),
+            request.Notes,
+            cancellationToken);
+
+        return finalized is null ? null : MapToDto(finalized);
+    }
+
     public async Task<AppointmentDto?> GetByIdAsync(
         Guid id,
         Guid currentUserId,

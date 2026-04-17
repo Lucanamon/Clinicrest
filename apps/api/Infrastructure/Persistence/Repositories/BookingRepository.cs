@@ -128,8 +128,26 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
         }
     }
 
+    public async Task<bool> ScheduleAsync(long bookingId, Guid patientId, CancellationToken cancellationToken = default)
+    {
+        await EnsureBookingPatientIdColumnAsync(cancellationToken);
+
+        var booking = await dbContext.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
+        if (booking is null || booking.Status != BookingStatus.Active)
+        {
+            return false;
+        }
+
+        booking.PatientId = patientId;
+        booking.Status = BookingStatus.Scheduled;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     public async Task<IReadOnlyList<BookingListItem>> GetActiveListAsync(CancellationToken cancellationToken = default)
     {
+        await EnsureBookingPatientIdColumnAsync(cancellationToken);
+
         return await (
             from booking in dbContext.Bookings.AsNoTracking()
             join slot in dbContext.Slots.AsNoTracking() on booking.SlotId equals slot.Id into slots
@@ -142,10 +160,25 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
                 SlotId = booking.SlotId,
                 PatientName = booking.PatientName ?? "Guest",
                 PhoneNumber = booking.PhoneNumber,
-                Status = booking.Status == BookingStatus.Active ? "ACTIVE" : "CANCELLED",
+                PatientId = booking.PatientId,
+                Status = booking.Status == BookingStatus.Active
+                    ? "ACTIVE"
+                    : booking.Status == BookingStatus.Scheduled
+                        ? "SCHEDULED"
+                        : "CANCELLED",
                 CreatedAt = booking.CreatedAt,
                 SlotStartTime = slot != null ? slot.StartTime : null
             }).ToListAsync(cancellationToken);
+    }
+
+    private async Task EnsureBookingPatientIdColumnAsync(CancellationToken cancellationToken)
+    {
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            ALTER TABLE bookings
+            ADD COLUMN IF NOT EXISTS patient_id uuid;
+            """,
+            cancellationToken);
     }
 
     private static BookingResult Failed(string error)
