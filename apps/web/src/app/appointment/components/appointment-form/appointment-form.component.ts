@@ -136,12 +136,12 @@ export class AppointmentFormComponent implements OnInit {
       const payload = { ...base, doctorId: v.doctorId.trim() };
       if (id) {
         this.appointmentService.update(id, payload).subscribe({
-          next: () => void this.router.navigateByUrl('/appointments'),
+          next: () => void this.router.navigateByUrl('/request'),
           error: () => this.saveError.set('Could not save changes. Check your input and try again.')
         });
       } else {
         this.appointmentService.create(payload).subscribe({
-          next: () => void this.router.navigateByUrl('/appointments'),
+          next: () => void this.router.navigateByUrl('/request'),
           error: () => this.saveError.set('Could not create appointment. Check your input and try again.')
         });
       }
@@ -149,12 +149,12 @@ export class AppointmentFormComponent implements OnInit {
       const payload = { ...base, doctorId: null };
       if (id) {
         this.appointmentService.update(id, payload).subscribe({
-          next: () => void this.router.navigateByUrl('/appointments'),
+          next: () => void this.router.navigateByUrl('/request'),
           error: () => this.saveError.set('Could not save changes. Check your input and try again.')
         });
       } else {
         this.appointmentService.create(payload).subscribe({
-          next: () => void this.router.navigateByUrl('/appointments'),
+          next: () => void this.router.navigateByUrl('/request'),
           error: () => this.saveError.set('Could not create appointment. Check your input and try again.')
         });
       }
@@ -172,7 +172,7 @@ export class AppointmentFormComponent implements OnInit {
   }
 
   cancel(): void {
-    void this.router.navigateByUrl('/appointments');
+    void this.router.navigateByUrl('/request');
   }
 
   showDoctorField(): boolean {

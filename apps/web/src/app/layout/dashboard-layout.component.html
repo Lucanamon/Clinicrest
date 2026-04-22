@@ -17,18 +17,18 @@
         </a>
         <a
           class="nav-operational"
-          routerLink="/appointments"
+          routerLink="/request"
           routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: true }"
+          [routerLinkActiveOptions]="{ exact: false }"
         >
+          <span class="nav-label">Request</span>
+        </a>
+        <a class="nav-operational" routerLink="/appointments" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
           <span class="nav-label">Appointments</span>
         </a>
-        <a class="nav-operational" routerLink="/schedule" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          <span class="nav-label">Schedule</span>
-        </a>
         @if (canAccessBooking) {
-          <a class="nav-operational" routerLink="/booking" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-            <span class="nav-label">Booking</span>
+          <a class="nav-operational" routerLink="/schedule" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            <span class="nav-label">Schedule</span>
           </a>
         }
         <a class="nav-management" routerLink="/backlog" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">

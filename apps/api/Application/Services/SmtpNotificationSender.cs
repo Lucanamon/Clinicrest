@@ -28,8 +28,8 @@ public class SmtpNotificationSender : INotificationSender
 
         if (!o.Enabled)
         {
-            _logger.LogDebug("SMTP: not sending (Smtp:Enabled is false) to {Email}.", email);
-            return true;
+            _logger.LogInformation("SMTP disabled - not sending to {Email}.", email);
+            return false;
         }
 
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(message))

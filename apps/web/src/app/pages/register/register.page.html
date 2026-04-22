@@ -3,7 +3,7 @@
     <div>
       @if (isRegisterEntry) {
         <h1>Guest entry</h1>
-        <p class="muted">Enter your phone number to continue to booking request.</p>
+        <p class="muted">Enter your phone number to continue to booking.</p>
       } @else {
         <h1>Guest booking request</h1>
         <p class="muted">Complete one step at a time.</p>
@@ -65,7 +65,7 @@
           <span class="field-error" role="alert">Phone number must contain digits only.</span>
         }
       </div>
-      <button type="submit" class="btn-primary">Continue to request</button>
+      <button type="submit" class="btn-primary">Continue to booking</button>
     </form>
   } @else {
     <button type="button" class="btn-secondary back-btn" (click)="goBack()">← Back</button>

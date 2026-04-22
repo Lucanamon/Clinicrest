@@ -11,6 +11,8 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
 {
     private const int MaxSerializationRetries = 5;
     private const string DuplicateBookingError = "DuplicateBooking";
+    private const string ReminderMessageText = "Reminder: your appointment is coming soon";
+    private const string MissingEmailPlaceholder = "no-patient-email@clinicrest.invalid";
 
     public async Task<BookingResult> CreateAsync(
         long slotId,
@@ -242,7 +244,7 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             .GroupBy(n => n.BookingId)
             .ToDictionary(
                 g => g.Key,
-                g => g.OrderByDescending(x => x.CreatedAt).First());
+                g => PickRepresentativeJob(g.ToList()));
 
         foreach (var item in list)
         {
@@ -275,7 +277,9 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
         job.Status = NotificationStatus.Pending;
         job.RetryCount = 0;
         job.ErrorMessage = null;
-        job.ScheduledSendTime = DateTime.UtcNow;
+        var now = DateTime.UtcNow;
+        job.ScheduledSendTime = now;
+        job.NextAttemptAt = now;
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -324,18 +328,10 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             return;
         }
 
-        dbContext.NotificationJobs.Add(new NotificationJob
-        {
-            Id = Guid.NewGuid(),
-            BookingId = booking.Id,
-            PatientName = booking.PatientName,
-            PhoneNumber = booking.PhoneNumber ?? string.Empty,
-            ScheduledSendTime = scheduledSend,
-            Status = NotificationStatus.Pending,
-            RetryCount = 0,
-            Channel = NotificationChannel.Sms,
-            CreatedAt = DateTime.UtcNow
-        });
+        var createdAt = DateTime.UtcNow;
+        var phone = booking.PhoneNumber ?? string.Empty;
+        dbContext.NotificationJobs.Add(CreateSmsJob(booking.Id, booking.PatientName, phone, scheduledSend, createdAt));
+        dbContext.NotificationJobs.Add(CreateEmailJob(booking.Id, booking.PatientName, null, scheduledSend, createdAt));
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -343,7 +339,9 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
     private async Task CancelPendingNotificationJobsAsync(long bookingId, CancellationToken cancellationToken)
     {
         var jobs = await dbContext.NotificationJobs
-            .Where(j => j.BookingId == bookingId && j.Status == NotificationStatus.Pending)
+            .Where(j =>
+                j.BookingId == bookingId &&
+                (j.Status == NotificationStatus.Pending || j.Status == NotificationStatus.Retrying))
             .ToListAsync(cancellationToken);
 
         foreach (var job in jobs)
@@ -391,27 +389,38 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
 
         if (pendingJobs.Count == 0)
         {
-            dbContext.NotificationJobs.Add(new NotificationJob
-            {
-                Id = Guid.NewGuid(),
-                BookingId = booking.Id,
-                PatientName = patientName,
-                PhoneNumber = phone,
-                ScheduledSendTime = scheduledSend,
-                Status = NotificationStatus.Pending,
-                RetryCount = 0,
-                Channel = NotificationChannel.Sms,
-                CreatedAt = utcNow
-            });
+            dbContext.NotificationJobs.Add(CreateSmsJob(booking.Id, patientName, phone, scheduledSend, utcNow));
+            dbContext.NotificationJobs.Add(CreateEmailJob(booking.Id, patientName, ResolvePatientEmail(patient), scheduledSend, utcNow));
             return;
         }
 
+        var emailForChannel = ResolvePatientEmail(patient);
         foreach (var job in pendingJobs)
         {
             job.PatientName = patientName;
-            job.PhoneNumber = phone;
             job.ScheduledSendTime = scheduledSend;
+            job.NextAttemptAt = scheduledSend;
+            job.Message = ReminderMessageText;
+            if (job.Channel == NotificationChannel.Sms)
+            {
+                job.PhoneNumber = phone;
+            }
+            else
+            {
+                job.EmailAddress = string.IsNullOrWhiteSpace(emailForChannel)
+                    ? MissingEmailPlaceholder
+                    : emailForChannel.Trim();
+            }
         }
+
+        EnsureSmsAndEmailJobsExist(
+            booking.Id,
+            patientName,
+            phone,
+            scheduledSend,
+            utcNow,
+            emailForChannel,
+            pendingJobs);
     }
 
     private async Task ApplyPendingNotificationJobAfterSlotChangeAsync(
@@ -436,18 +445,9 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
         {
             if (scheduledSend > utcNow)
             {
-                dbContext.NotificationJobs.Add(new NotificationJob
-                {
-                    Id = Guid.NewGuid(),
-                    BookingId = booking.Id,
-                    PatientName = booking.PatientName,
-                    PhoneNumber = booking.PhoneNumber ?? string.Empty,
-                    ScheduledSendTime = scheduledSend,
-                    Status = NotificationStatus.Pending,
-                    RetryCount = 0,
-                    Channel = NotificationChannel.Sms,
-                    CreatedAt = utcNow
-                });
+                var phone = booking.PhoneNumber ?? string.Empty;
+                dbContext.NotificationJobs.Add(CreateSmsJob(booking.Id, booking.PatientName, phone, scheduledSend, utcNow));
+                dbContext.NotificationJobs.Add(CreateEmailJob(booking.Id, booking.PatientName, null, scheduledSend, utcNow));
             }
 
             return;
@@ -466,7 +466,26 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
         foreach (var job in pendingJobs)
         {
             job.ScheduledSendTime = scheduledSend;
+            job.NextAttemptAt = scheduledSend;
+            job.Message = ReminderMessageText;
+            if (job.Channel == NotificationChannel.Sms)
+            {
+                job.PhoneNumber = booking.PhoneNumber ?? string.Empty;
+            }
+            else
+            {
+                job.EmailAddress = MissingEmailPlaceholder;
+            }
         }
+
+        EnsureSmsAndEmailJobsExist(
+            booking.Id,
+            booking.PatientName,
+            booking.PhoneNumber ?? string.Empty,
+            scheduledSend,
+            utcNow,
+            patientEmail: null,
+            pendingJobs);
     }
 
     private async Task<RescheduleBookingResult> RescheduleSingleAttemptAsync(
@@ -542,6 +561,91 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             throw;
         }
     }
+
+    private static string? ResolvePatientEmail(Patient? patient) =>
+        // Patient has no email field today; when added, return it from patient here.
+        null;
+
+    private void EnsureSmsAndEmailJobsExist(
+        long bookingId,
+        string patientName,
+        string phone,
+        DateTime scheduledSend,
+        DateTime createdAt,
+        string? patientEmail,
+        List<NotificationJob> alreadyPending)
+    {
+        if (!alreadyPending.Exists(j => j.Channel == NotificationChannel.Sms))
+        {
+            dbContext.NotificationJobs.Add(CreateSmsJob(bookingId, patientName, phone, scheduledSend, createdAt));
+        }
+
+        if (!alreadyPending.Exists(j => j.Channel == NotificationChannel.Email))
+        {
+            dbContext.NotificationJobs.Add(CreateEmailJob(bookingId, patientName, patientEmail, scheduledSend, createdAt));
+        }
+    }
+
+    private static int NotificationStatusSortKey(NotificationStatus status) =>
+        status switch
+        {
+            NotificationStatus.Failed => 0,
+            NotificationStatus.Retrying => 1,
+            NotificationStatus.Pending => 2,
+            NotificationStatus.Sent => 3,
+            NotificationStatus.Cancelled => 4,
+            _ => 5
+        };
+
+    private static NotificationJob PickRepresentativeJob(IReadOnlyList<NotificationJob> jobs) =>
+        jobs
+            .OrderBy(j => NotificationStatusSortKey(j.Status))
+            .ThenByDescending(j => j.CreatedAt)
+            .ThenBy(j => j.Id)
+            .First();
+
+    private static NotificationJob CreateSmsJob(
+        long bookingId,
+        string patientName,
+        string phone,
+        DateTime scheduledSend,
+        DateTime createdAt) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            BookingId = bookingId,
+            PatientName = patientName,
+            PhoneNumber = phone,
+            Message = ReminderMessageText,
+            ScheduledSendTime = scheduledSend,
+            NextAttemptAt = scheduledSend,
+            Status = NotificationStatus.Pending,
+            RetryCount = 0,
+            Channel = NotificationChannel.Sms,
+            CreatedAt = createdAt
+        };
+
+    private static NotificationJob CreateEmailJob(
+        long bookingId,
+        string patientName,
+        string? emailAddress,
+        DateTime scheduledSend,
+        DateTime createdAt) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            BookingId = bookingId,
+            PatientName = patientName,
+            PhoneNumber = string.Empty,
+            EmailAddress = string.IsNullOrWhiteSpace(emailAddress) ? MissingEmailPlaceholder : emailAddress.Trim(),
+            Message = ReminderMessageText,
+            ScheduledSendTime = scheduledSend,
+            NextAttemptAt = scheduledSend,
+            Status = NotificationStatus.Pending,
+            RetryCount = 0,
+            Channel = NotificationChannel.Email,
+            CreatedAt = createdAt
+        };
 
     private static BookingResult Failed(string error)
     {

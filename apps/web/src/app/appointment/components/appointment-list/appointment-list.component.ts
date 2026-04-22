@@ -96,11 +96,11 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
     const bookingId = row.id;
     this.bookingService.scheduleBooking(bookingId, matched.id).subscribe({
       next: () => {
-        this.successMessage.set('Request moved to Schedule.');
+        this.successMessage.set('Request moved to Appointments.');
         this.loadTriageInbox();
       },
       error: () => {
-        this.error.set('Could not move request to schedule.');
+        this.error.set('Could not move request to the appointments list.');
       }
     });
   }
@@ -118,7 +118,7 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
   }
 
   getProcessLabel(row: BookingApiDto): string {
-    return this.isRegisteredBooking(row) ? 'Send to Schedule' : 'Create Profile';
+    return this.isRegisteredBooking(row) ? 'Send to Appointments' : 'Create Profile';
   }
 
   createProfile(row: BookingApiDto): void {

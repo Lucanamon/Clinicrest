@@ -10,7 +10,15 @@ public class NotificationJob
 
     public string PhoneNumber { get; set; } = string.Empty;
 
+    public string? EmailAddress { get; set; }
+
+    public string? Message { get; set; }
+
     public DateTime ScheduledSendTime { get; set; }
+
+    public DateTime NextAttemptAt { get; set; }
+
+    public DateTime? SentAt { get; set; }
 
     public NotificationStatus Status { get; set; }
 

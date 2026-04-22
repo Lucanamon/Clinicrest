@@ -375,10 +375,27 @@ public class ApplicationDbContext : DbContext
                 .HasMaxLength(32)
                 .HasColumnName("phone_number");
 
+            entity.Property(n => n.EmailAddress)
+                .HasMaxLength(500)
+                .HasColumnName("email_address");
+
+            entity.Property(n => n.Message)
+                .HasMaxLength(4000)
+                .HasColumnName("message");
+
             entity.Property(n => n.ScheduledSendTime)
                 .IsRequired()
                 .HasColumnType("timestamp with time zone")
                 .HasColumnName("scheduled_send_time");
+
+            entity.Property(n => n.NextAttemptAt)
+                .IsRequired()
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("next_attempt_at");
+
+            entity.Property(n => n.SentAt)
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("sent_at");
 
             entity.Property(n => n.Status)
                 .IsRequired()
@@ -413,8 +430,8 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(n => n.BookingId)
                 .HasDatabaseName("ix_notification_jobs_booking_id");
 
-            entity.HasIndex(n => new { n.Status, n.ScheduledSendTime })
-                .HasDatabaseName("ix_notification_jobs_status_scheduled_send_time");
+            entity.HasIndex(n => new { n.Status, n.NextAttemptAt })
+                .HasDatabaseName("ix_notification_jobs_status_next_attempt_at");
 
             entity.HasOne<Booking>()
                 .WithMany()
