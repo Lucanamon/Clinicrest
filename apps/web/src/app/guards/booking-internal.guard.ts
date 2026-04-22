@@ -4,7 +4,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth';
 
 /**
- * Restricts booking management to internal users only.
+ * Restricts internal slot/booking management (`/schedule`) to clinical staff.
  */
 export const bookingInternalGuard: CanActivateFn = () => {
   const auth = inject(AuthService);

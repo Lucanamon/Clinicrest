@@ -113,7 +113,7 @@ export class GlobalSearchComponent {
   }
 
   goToAppointment(a: AppointmentDto): void {
-    void this.router.navigate(['/appointments', a.id]);
+    void this.router.navigate(['/request', a.id]);
     this.closeAfterNavigate();
   }
 

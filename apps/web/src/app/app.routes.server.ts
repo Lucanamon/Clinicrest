@@ -6,11 +6,11 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Server
   },
   {
-    path: 'appointments/:id/edit',
+    path: 'request/:id/edit',
     renderMode: RenderMode.Server
   },
   {
-    path: 'appointments/:id',
+    path: 'request/:id',
     renderMode: RenderMode.Server
   },
   {
@@ -34,11 +34,11 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Server
   },
   {
-    path: 'booking',
+    path: 'schedule',
     renderMode: RenderMode.Client
   },
   {
-    path: 'request',
+    path: 'booking',
     renderMode: RenderMode.Client
   },
   {

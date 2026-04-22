@@ -35,8 +35,8 @@ export const routes: Routes = [
     path: '',
     component: DashboardLayoutComponent,
     children: [
-      { path: 'request', component: RegisterPage },
-      { path: 'booking', component: BookingPage, canActivate: [bookingInternalGuard] },
+      { path: 'booking', component: RegisterPage },
+      { path: 'schedule', component: BookingPage, canActivate: [bookingInternalGuard] },
     ]
   },
   {
@@ -56,7 +56,7 @@ export const routes: Routes = [
         ]
       },
       {
-        path: 'appointments',
+        path: 'request',
         component: AppointmentsPage,
         children: [
           { path: '', component: AppointmentListComponent },
@@ -66,7 +66,7 @@ export const routes: Routes = [
         ]
       },
       {
-        path: 'schedule',
+        path: 'appointments',
         component: SchedulePage,
         canDeactivate: [scheduleUnsavedChangesGuard]
       },

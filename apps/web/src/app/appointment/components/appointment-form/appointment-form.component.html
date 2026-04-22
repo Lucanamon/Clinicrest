@@ -4,7 +4,7 @@
       <h1>{{ isEdit() ? 'Edit appointment' : 'New appointment' }}</h1>
       <p>{{ isEdit() ? 'Update scheduling details.' : 'Book a visit for a patient.' }}</p>
     </div>
-    <a routerLink="/appointments" class="back-link">← Back to list</a>
+    <a routerLink="/request" class="back-link">← Back to list</a>
   </header>
 
   @if (lookupsLoading() || loading()) {

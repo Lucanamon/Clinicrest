@@ -171,7 +171,7 @@ export class RegisterPage implements OnInit, OnDestroy {
     const { phoneNumber } = this.form.getRawValue();
     const normalizedPhone = this.normalizePhoneDigits(phoneNumber);
     this.storeGuestPhone(normalizedPhone);
-    void this.router.navigate(['/request'], { queryParams: { phone: normalizedPhone } });
+    void this.router.navigate(['/booking'], { queryParams: { phone: normalizedPhone } });
   }
 
   goBack(): void {

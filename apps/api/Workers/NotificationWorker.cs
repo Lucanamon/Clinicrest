@@ -19,7 +19,7 @@ public class NotificationWorker(
     private readonly IHubContext<NotificationHub> _hubContext = hubContext;
     private readonly ILogger<NotificationWorker> _logger = logger;
 
-    private const string ReminderMessage = "Reminder: You have an appointment coming up.";
+    private const string DefaultReminderMessage = "Reminder: your appointment is coming soon";
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -35,19 +35,36 @@ public class NotificationWorker(
                 var dueJobs = await db.NotificationJobs
                     .Where(j =>
                         (j.Status == NotificationStatus.Pending || j.Status == NotificationStatus.Retrying) &&
-                        j.ScheduledSendTime <= now)
+                        j.NextAttemptAt <= now)
                     .ToListAsync(stoppingToken);
 
                 foreach (var job in dueJobs)
                 {
+                    _logger.LogInformation(
+                        "Picked notification job {JobId} (channel {Channel}, booking {BookingId}, retry {RetryCount}).",
+                        job.Id,
+                        job.Channel,
+                        job.BookingId,
+                        job.RetryCount);
+
+                    var text = string.IsNullOrWhiteSpace(job.Message) ? DefaultReminderMessage : job.Message!;
+
                     var ok = job.Channel == NotificationChannel.Sms
-                        ? await sender.SendSmsAsync(job.PhoneNumber, ReminderMessage)
-                        : await sender.SendEmailAsync(job.PhoneNumber, ReminderMessage);
+                        ? await sender.SendSmsAsync(job.PhoneNumber, text)
+                        : await sender.SendEmailAsync(job.EmailAddress ?? string.Empty, text);
 
                     if (ok)
                     {
+                        var sentAt = DateTime.UtcNow;
                         job.Status = NotificationStatus.Sent;
+                        job.SentAt = sentAt;
                         job.ErrorMessage = null;
+                        _logger.LogInformation(
+                            "Notification job {JobId} sent successfully at {SentAt} (channel {Channel}, booking {BookingId}).",
+                            job.Id,
+                            sentAt,
+                            job.Channel,
+                            job.BookingId);
                         try
                         {
                             await _hubContext.Clients.All.SendAsync(
@@ -62,16 +79,7 @@ public class NotificationWorker(
                     }
                     else
                     {
-                        job.RetryCount++;
-                        if (job.RetryCount < 3)
-                        {
-                            job.Status = NotificationStatus.Retrying;
-                        }
-                        else
-                        {
-                            job.Status = NotificationStatus.Failed;
-                            job.ErrorMessage = "Mock sender failed 3 times";
-                        }
+                        ApplyFailedAttempt(job, now);
                     }
                 }
 
@@ -94,5 +102,37 @@ public class NotificationWorker(
                 break;
             }
         }
+    }
+
+    private void ApplyFailedAttempt(NotificationJob job, DateTime utcNow)
+    {
+        job.RetryCount++;
+        if (job.RetryCount > 3)
+        {
+            job.Status = NotificationStatus.Failed;
+            job.ErrorMessage = "Notification delivery failed after 3 retries.";
+            _logger.LogWarning(
+                "Notification job {JobId} (channel {Channel}, booking {BookingId}) failed permanently after {RetryCount} failed attempts (max 3 retries).",
+                job.Id,
+                job.Channel,
+                job.BookingId,
+                job.RetryCount);
+            return;
+        }
+
+        job.NextAttemptAt = job.RetryCount switch
+        {
+            1 => utcNow.AddMinutes(1),
+            2 => utcNow.AddMinutes(5),
+            3 => utcNow.AddMinutes(15),
+            _ => utcNow
+        };
+        job.Status = NotificationStatus.Retrying;
+        _logger.LogInformation(
+            "Scheduled retry for notification job {JobId} (channel {Channel}): next attempt at {NextAttempt} (retry count {RetryCount}).",
+            job.Id,
+            job.Channel,
+            job.NextAttemptAt,
+            job.RetryCount);
     }
 }
