@@ -1,6 +1,8 @@
 using api.Application.Services;
 using api.Domain.Entities;
+using api.Hubs;
 using api.Infrastructure.Persistence;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -10,9 +12,11 @@ namespace api.Workers;
 
 public class NotificationWorker(
     IServiceScopeFactory scopeFactory,
+    IHubContext<NotificationHub> hubContext,
     ILogger<NotificationWorker> logger) : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
+    private readonly IHubContext<NotificationHub> _hubContext = hubContext;
     private readonly ILogger<NotificationWorker> _logger = logger;
 
     private const string ReminderMessage = "Reminder: You have an appointment coming up.";
@@ -44,6 +48,17 @@ public class NotificationWorker(
                     {
                         job.Status = NotificationStatus.Sent;
                         job.ErrorMessage = null;
+                        try
+                        {
+                            await _hubContext.Clients.All.SendAsync(
+                                "ReceiveSystemAlert",
+                                $"✅ Reminder sent to {job.PatientName}",
+                                cancellationToken: stoppingToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to broadcast notification completion for job {JobId}.", job.Id);
+                        }
                     }
                     else
                     {

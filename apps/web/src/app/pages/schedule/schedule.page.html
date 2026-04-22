@@ -4,8 +4,79 @@
       <h1>Schedule</h1>
       <p class="subtle">Doctor: {{ doctorLabel }}</p>
     </div>
-    <a routerLink="/appointments" class="back-link">Back to Triage</a>
+    <div class="schedule-header-actions">
+      <button type="button" class="test-notifications-btn" (click)="openTestPlayspace()">
+        <span aria-hidden="true" class="test-notifications-emoji">🛠️</span>
+        <span>Test Notifications</span>
+      </button>
+      <a routerLink="/appointments" class="back-link">Back to Triage</a>
+    </div>
   </header>
+
+  @if (testPlayspaceOpen()) {
+    <div
+      class="test-play-overlay"
+      role="presentation"
+      (click)="closeTestPlayspace()"
+    ></div>
+    <div
+      class="test-play-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="test-play-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="test-play-head">
+        <h2 id="test-play-title">Notification Playspace</h2>
+        <button type="button" class="test-play-close" (click)="closeTestPlayspace()" aria-label="Close">
+          &times;
+        </button>
+      </div>
+      <form [formGroup]="testForm" (ngSubmit)="sendTestNotification()">
+        <label class="test-play-field">
+          <span>Phone or email</span>
+          <input
+            type="text"
+            formControlName="phoneNumber"
+            autocomplete="off"
+            placeholder="+1234567890 (use an address for email channel)"
+          />
+        </label>
+        <label class="test-play-field">
+          <span>Message</span>
+          <input type="text" formControlName="message" />
+        </label>
+        <label class="test-play-field">
+          <span>Channel</span>
+          <select formControlName="channel">
+            <option value="Sms">SMS</option>
+            <option value="Email">Email</option>
+          </select>
+        </label>
+        @if (testSendFeedback()) {
+          <p
+            class="test-play-feedback"
+            [class.is-error]="testSendFeedback()!.kind === 'err'"
+            [class.is-ok]="testSendFeedback()!.kind === 'ok'"
+            role="status"
+          >
+            {{ testSendFeedback()!.text }}
+          </p>
+        }
+        <div class="test-play-actions">
+          <button type="button" class="test-play-secondary" (click)="closeTestPlayspace()">Close</button>
+          <button type="submit" class="test-play-submit" [disabled]="testSendLoading() || testForm.invalid">
+            @if (testSendLoading()) {
+              <span class="spinner" aria-hidden="true"></span>
+              <span>Sending&hellip;</span>
+            } @else {
+              <span>Send Test Alert</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  }
 
   @if (error()) {
     <section class="state-card error">{{ error() }}</section>

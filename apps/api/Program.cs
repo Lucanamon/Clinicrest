@@ -9,9 +9,11 @@ using api.Infrastructure.DependencyInjection;
 using api.Infrastructure.Integrations;
 using api.Infrastructure.Middleware;
 using api.Infrastructure.Persistence;
+using api.Hubs;
 using api.Workers;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -44,8 +46,10 @@ try
     builder.Services.AddClinicrestPersistence(connectionString);
     builder.Services.AddClinicrestRepositories();
     builder.Services.AddClinicrestApplicationServices();
-    builder.Services.AddScoped<INotificationSender, MockNotificationSender>();
+    builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.SectionName));
+    builder.Services.AddScoped<INotificationSender, SmtpNotificationSender>();
     builder.Services.AddHostedService<NotificationWorker>();
+    builder.Services.AddSignalR();
 
     var jwtSection = builder.Configuration.GetSection("Jwt");
     var jwtIssuer = jwtSection["Issuer"] ?? "clinicrest-api";
@@ -68,6 +72,20 @@ try
                 IssuerSigningKey = signingKey,
                 ClockSkew = TimeSpan.FromSeconds(30),
                 RoleClaimType = ClaimTypes.Role
+            };
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                    {
+                        context.Token = accessToken;
+                    }
+
+                    return Task.CompletedTask;
+                }
             };
         });
 
@@ -107,6 +125,7 @@ try
     app.UseAuthorization();
     app.UseMiddleware<ActivityMiddleware>();
     app.MapControllers();
+    app.MapHub<NotificationHub>("/hubs/notifications");
     app.MapHealthChecks("/health");
     app.Run();
 }
