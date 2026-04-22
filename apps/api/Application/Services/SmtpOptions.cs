@@ -6,7 +6,7 @@ namespace api.Application.Services;
 /// </summary>
 public class SmtpOptions
 {
-    public const string SectionName = "Smtp";
+    public const string SectionName = "Email:Smtp";
 
     public bool Enabled { get; set; }
 
@@ -16,13 +16,15 @@ public class SmtpOptions
     /// <summary>587 for Gmail (submission + StartTLS).</summary>
     public int Port { get; set; } = 587;
 
-    public string User { get; set; } = string.Empty;
+    public bool EnableSsl { get; set; } = true;
+
+    public string Username { get; set; } = string.Empty;
 
     public string Password { get; set; } = string.Empty;
 
-    public string FromAddress { get; set; } = string.Empty;
+    public string FromEmail { get; set; } = string.Empty;
 
-    public string? FromDisplayName { get; set; }
+    public string? FromName { get; set; }
 
     public string DefaultSubject { get; set; } = "Clinicrest notification";
 }

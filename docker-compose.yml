@@ -40,6 +40,13 @@ services:
       Jwt__Issuer: ${JWT_ISSUER:-clinicrest-api}
       Jwt__Audience: ${JWT_AUDIENCE:-clinicrest-web}
       Jwt__Secret: ${JWT_SECRET:-change-me-set-JWT_SECRET-in-production-min-32-chars}
+      Email__Smtp__Host: ${SMTP_HOST:-smtp.gmail.com}
+      Email__Smtp__Port: ${SMTP_PORT:-587}
+      Email__Smtp__EnableSsl: ${SMTP_ENABLE_SSL:-true}
+      Email__Smtp__FromEmail: ${SMTP_FROM_EMAIL:-noreply@example.com}
+      Email__Smtp__FromName: ${SMTP_FROM_NAME:-Clinicrest Notifications}
+      Email__Smtp__Username: ${SMTP_USERNAME}
+      Email__Smtp__Password: ${SMTP_PASSWORD}
       Seed__SyncRootAdminPasswordOnStartup: "false"
       Seed__ResetRootAdminIfPasswordMismatch: "false"
     depends_on:

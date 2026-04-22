@@ -38,28 +38,35 @@ public class SmtpNotificationSender : INotificationSender
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(o.User) || string.IsNullOrWhiteSpace(o.Password)
-            || string.IsNullOrWhiteSpace(o.FromAddress) || string.IsNullOrWhiteSpace(o.Host))
+        if (string.IsNullOrWhiteSpace(o.Username) || string.IsNullOrWhiteSpace(o.Password))
         {
-            _logger.LogError("SMTP: Enabled is true but Smtp:User, Password, FromAddress, or Host is missing.");
+            _logger.LogError(
+                "SMTP: credentials missing. Set Email__Smtp__Username and Email__Smtp__Password environment variables.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(o.FromEmail) || string.IsNullOrWhiteSpace(o.Host))
+        {
+            _logger.LogError("SMTP: Enabled is true but Email:Smtp:Host or Email:Smtp:FromEmail is missing.");
             return false;
         }
 
         try
         {
             var mime = new MimeMessage();
-            var from = string.IsNullOrWhiteSpace(o.FromDisplayName)
-                ? new MailboxAddress(o.FromAddress, o.FromAddress)
-                : new MailboxAddress(o.FromDisplayName, o.FromAddress);
+            var from = string.IsNullOrWhiteSpace(o.FromName)
+                ? new MailboxAddress(o.FromEmail, o.FromEmail)
+                : new MailboxAddress(o.FromName, o.FromEmail);
             mime.From.Add(from);
             mime.To.Add(MailboxAddress.Parse(email.Trim()));
             mime.Subject = o.DefaultSubject;
             mime.Body = new TextPart("plain") { Text = message };
 
-            _logger.LogDebug("SMTP: connecting to {Host}:{Port} (StartTLS).", o.Host, o.Port);
+            var socketOptions = o.EnableSsl ? SecureSocketOptions.StartTls : SecureSocketOptions.None;
+            _logger.LogDebug("SMTP: connecting to {Host}:{Port}. SSL enabled: {EnableSsl}", o.Host, o.Port, o.EnableSsl);
             using var client = new SmtpClient();
-            await client.ConnectAsync(o.Host, o.Port, SecureSocketOptions.StartTls);
-            await client.AuthenticateAsync(o.User, o.Password);
+            await client.ConnectAsync(o.Host, o.Port, socketOptions);
+            await client.AuthenticateAsync(o.Username, o.Password);
             await client.SendAsync(mime);
             await client.DisconnectAsync(true);
 
