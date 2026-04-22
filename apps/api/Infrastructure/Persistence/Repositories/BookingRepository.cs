@@ -88,6 +88,7 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
 
             dbContext.Bookings.Add(booking);
             await dbContext.SaveChangesAsync(cancellationToken);
+            await TryAddPendingNotificationJobAsync(booking, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 
             return new BookingResult
@@ -137,6 +138,7 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             }
 
             booking.Status = BookingStatus.Cancelled;
+            await CancelPendingNotificationJobsAsync(booking.Id, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 
@@ -161,8 +163,33 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
 
         booking.PatientId = patientId;
         booking.Status = BookingStatus.Scheduled;
+        await SyncNotificationJobAfterScheduleAsync(booking, patientId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    public async Task<RescheduleBookingResult> RescheduleAsync(
+        long bookingId,
+        long newSlotId,
+        CancellationToken cancellationToken = default)
+    {
+        if (newSlotId <= 0)
+        {
+            return RescheduleBookingResult.Fail("new_slot_id is required.");
+        }
+
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await RescheduleSingleAttemptAsync(bookingId, newSlotId, cancellationToken);
+            }
+            catch (Exception ex) when (IsTransientPostgres(ex) && attempt < MaxSerializationRetries)
+            {
+                dbContext.ChangeTracker.Clear();
+                await Task.Delay(TimeSpan.FromMilliseconds(25 * (1 << attempt)), cancellationToken);
+            }
+        }
     }
 
     public async Task<IReadOnlyList<BookingListItem>> GetListByStatusAsync(
@@ -171,7 +198,7 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
     {
         await EnsureBookingPatientIdColumnAsync(cancellationToken);
 
-        return await (
+        var list = await (
             from booking in dbContext.Bookings.AsNoTracking()
             join slot in dbContext.Slots.AsNoTracking() on booking.SlotId equals slot.Id into slots
             from slot in slots.DefaultIfEmpty()
@@ -199,7 +226,70 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
                 CreatedAt = booking.CreatedAt,
                 SlotStartTime = slot != null ? slot.StartTime : null
             }).ToListAsync(cancellationToken);
+
+        if (list.Count == 0)
+        {
+            return list;
+        }
+
+        var bookingIds = list.Select(b => b.Id).ToList();
+        var allJobs = await dbContext.NotificationJobs
+            .AsNoTracking()
+            .Where(n => bookingIds.Contains(n.BookingId))
+            .ToListAsync(cancellationToken);
+
+        var latestByBooking = allJobs
+            .GroupBy(n => n.BookingId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(x => x.CreatedAt).First());
+
+        foreach (var item in list)
+        {
+            if (!latestByBooking.TryGetValue(item.Id, out var job))
+            {
+                continue;
+            }
+
+            item.NotificationStatus = MapNotificationStatusForApi(job.Status);
+            item.LastError = job.ErrorMessage;
+        }
+
+        return list;
     }
+
+    public async Task<bool> ResetFailedNotificationForRetryAsync(
+        long bookingId,
+        CancellationToken cancellationToken = default)
+    {
+        var job = await dbContext.NotificationJobs
+            .Where(j => j.BookingId == bookingId && j.Status == NotificationStatus.Failed)
+            .OrderByDescending(j => j.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (job is null)
+        {
+            return false;
+        }
+
+        job.Status = NotificationStatus.Pending;
+        job.RetryCount = 0;
+        job.ErrorMessage = null;
+        job.ScheduledSendTime = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    private static string? MapNotificationStatusForApi(NotificationStatus status) =>
+        status switch
+        {
+            NotificationStatus.Pending => "Pending",
+            NotificationStatus.Sent => "Sent",
+            NotificationStatus.Failed => "Failed",
+            NotificationStatus.Retrying => "Retrying",
+            NotificationStatus.Cancelled => "Cancelled",
+            _ => null
+        };
 
     private async Task EnsureBookingPatientIdColumnAsync(CancellationToken cancellationToken)
     {
@@ -209,6 +299,248 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             ADD COLUMN IF NOT EXISTS patient_id uuid;
             """,
             cancellationToken);
+    }
+
+    private static DateTime NormalizeToUtc(DateTime value) =>
+        value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(value, DateTimeKind.Utc)
+            : value.ToUniversalTime();
+
+    private static DateTime ComputeScheduledSendUtc(DateTime appointmentStart) =>
+        NormalizeToUtc(appointmentStart).AddHours(-1);
+
+    private async Task TryAddPendingNotificationJobAsync(Booking booking, CancellationToken cancellationToken)
+    {
+        var slot = await dbContext.Slots.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == booking.SlotId, cancellationToken);
+        if (slot is null)
+        {
+            return;
+        }
+
+        var scheduledSend = ComputeScheduledSendUtc(slot.StartTime);
+        if (scheduledSend <= DateTime.UtcNow)
+        {
+            return;
+        }
+
+        dbContext.NotificationJobs.Add(new NotificationJob
+        {
+            Id = Guid.NewGuid(),
+            BookingId = booking.Id,
+            PatientName = booking.PatientName,
+            PhoneNumber = booking.PhoneNumber ?? string.Empty,
+            ScheduledSendTime = scheduledSend,
+            Status = NotificationStatus.Pending,
+            RetryCount = 0,
+            Channel = NotificationChannel.Sms,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task CancelPendingNotificationJobsAsync(long bookingId, CancellationToken cancellationToken)
+    {
+        var jobs = await dbContext.NotificationJobs
+            .Where(j => j.BookingId == bookingId && j.Status == NotificationStatus.Pending)
+            .ToListAsync(cancellationToken);
+
+        foreach (var job in jobs)
+        {
+            job.Status = NotificationStatus.Cancelled;
+        }
+    }
+
+    private async Task SyncNotificationJobAfterScheduleAsync(
+        Booking booking,
+        Guid patientId,
+        CancellationToken cancellationToken)
+    {
+        var slot = await dbContext.Slots.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == booking.SlotId, cancellationToken);
+        if (slot is null)
+        {
+            return;
+        }
+
+        var patient = await dbContext.Patients.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == patientId, cancellationToken);
+
+        var patientName = patient is not null
+            ? $"{patient.FirstName} {patient.LastName}".Trim()
+            : booking.PatientName;
+
+        var phone = patient?.PhoneNumber ?? booking.PhoneNumber ?? string.Empty;
+        var scheduledSend = ComputeScheduledSendUtc(slot.StartTime);
+        var utcNow = DateTime.UtcNow;
+
+        var pendingJobs = await dbContext.NotificationJobs
+            .Where(j => j.BookingId == booking.Id && j.Status == NotificationStatus.Pending)
+            .ToListAsync(cancellationToken);
+
+        if (scheduledSend <= utcNow)
+        {
+            foreach (var job in pendingJobs)
+            {
+                job.Status = NotificationStatus.Cancelled;
+            }
+
+            return;
+        }
+
+        if (pendingJobs.Count == 0)
+        {
+            dbContext.NotificationJobs.Add(new NotificationJob
+            {
+                Id = Guid.NewGuid(),
+                BookingId = booking.Id,
+                PatientName = patientName,
+                PhoneNumber = phone,
+                ScheduledSendTime = scheduledSend,
+                Status = NotificationStatus.Pending,
+                RetryCount = 0,
+                Channel = NotificationChannel.Sms,
+                CreatedAt = utcNow
+            });
+            return;
+        }
+
+        foreach (var job in pendingJobs)
+        {
+            job.PatientName = patientName;
+            job.PhoneNumber = phone;
+            job.ScheduledSendTime = scheduledSend;
+        }
+    }
+
+    private async Task ApplyPendingNotificationJobAfterSlotChangeAsync(
+        Booking booking,
+        CancellationToken cancellationToken)
+    {
+        var slot = await dbContext.Slots.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == booking.SlotId, cancellationToken);
+        if (slot is null)
+        {
+            return;
+        }
+
+        var scheduledSend = ComputeScheduledSendUtc(slot.StartTime);
+        var utcNow = DateTime.UtcNow;
+
+        var pendingJobs = await dbContext.NotificationJobs
+            .Where(j => j.BookingId == booking.Id && j.Status == NotificationStatus.Pending)
+            .ToListAsync(cancellationToken);
+
+        if (pendingJobs.Count == 0)
+        {
+            if (scheduledSend > utcNow)
+            {
+                dbContext.NotificationJobs.Add(new NotificationJob
+                {
+                    Id = Guid.NewGuid(),
+                    BookingId = booking.Id,
+                    PatientName = booking.PatientName,
+                    PhoneNumber = booking.PhoneNumber ?? string.Empty,
+                    ScheduledSendTime = scheduledSend,
+                    Status = NotificationStatus.Pending,
+                    RetryCount = 0,
+                    Channel = NotificationChannel.Sms,
+                    CreatedAt = utcNow
+                });
+            }
+
+            return;
+        }
+
+        if (scheduledSend <= utcNow)
+        {
+            foreach (var job in pendingJobs)
+            {
+                job.Status = NotificationStatus.Cancelled;
+            }
+
+            return;
+        }
+
+        foreach (var job in pendingJobs)
+        {
+            job.ScheduledSendTime = scheduledSend;
+        }
+    }
+
+    private async Task<RescheduleBookingResult> RescheduleSingleAttemptAsync(
+        long bookingId,
+        long newSlotId,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction =
+            await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        try
+        {
+            var booking = await dbContext.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
+            if (booking is null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return RescheduleBookingResult.NotFoundResult();
+            }
+
+            if (booking.Status == BookingStatus.Cancelled)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return RescheduleBookingResult.Fail("Cannot reschedule a cancelled booking.");
+            }
+
+            if (booking.SlotId == newSlotId)
+            {
+                await transaction.CommitAsync(cancellationToken);
+                return RescheduleBookingResult.SuccessResult();
+            }
+
+            var oldSlotId = booking.SlotId;
+
+            var released = await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                 UPDATE slots
+                 SET booked_count = booked_count - 1
+                 WHERE id = {oldSlotId} AND booked_count > 0
+                 """,
+                cancellationToken);
+
+            if (released != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return RescheduleBookingResult.Fail("Could not release the previous slot.");
+            }
+
+            var reserved = await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                 UPDATE slots
+                 SET booked_count = booked_count + 1
+                 WHERE id = {newSlotId}
+                   AND booked_count < capacity
+                   AND start_time > NOW()
+                 """,
+                cancellationToken);
+
+            if (reserved != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return RescheduleBookingResult.Fail("Slot full, invalid, or not in the future.");
+            }
+
+            booking.SlotId = newSlotId;
+            await ApplyPendingNotificationJobAfterSlotChangeAsync(booking, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return RescheduleBookingResult.SuccessResult();
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 
     private static BookingResult Failed(string error)

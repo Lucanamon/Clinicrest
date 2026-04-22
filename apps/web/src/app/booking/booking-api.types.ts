@@ -28,4 +28,7 @@ export interface BookingApiDto {
   slot_start_time?: ApiUtcIsoString | null;
   status: string;
   created_at: ApiUtcIsoString;
+  /** Latest SMS reminder job status when a job exists: Sent, Pending, Retrying, Failed, Cancelled */
+  notificationStatus?: string | null;
+  lastError?: string | null;
 }

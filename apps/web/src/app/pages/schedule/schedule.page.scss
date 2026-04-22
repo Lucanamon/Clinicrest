@@ -108,6 +108,110 @@
   color: #64748b;
 }
 
+.reminder-audit {
+  align-items: flex-start;
+}
+
+.reminder-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  gap: 0.4rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.reminder-failed-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.reminder-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.reminder-glyph {
+  font-size: 1.85rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.reminder-text {
+  white-space: nowrap;
+}
+
+.status-sent {
+  color: #15803d;
+}
+
+.status-pending {
+  color: #1d4ed8;
+}
+
+.status-retrying {
+  color: #c2410c;
+}
+
+.status-retrying .reminder-text {
+  font-weight: 700;
+}
+
+.status-failed {
+  color: #b91c1c;
+}
+
+.status-muted {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.spinner {
+  display: inline-block;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 0.2rem solid #fdba74;
+  border-top-color: #ea580c;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: reminder-spin 0.65s linear infinite;
+}
+
+@keyframes reminder-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.retry-btn {
+  border: 1px solid #0ea5e9;
+  background: #f0f9ff;
+  color: #0369a1;
+  border-radius: 8px;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.retry-btn:hover:not(:disabled) {
+  background: #e0f2fe;
+}
+
+.retry-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .cancel-btn {
   margin-top: 0.35rem;
   border: 1px solid #ef4444;

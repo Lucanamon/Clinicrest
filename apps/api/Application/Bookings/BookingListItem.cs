@@ -29,4 +29,12 @@ public class BookingListItem
 
     [JsonPropertyName("slot_start_time")]
     public DateTimeOffset? SlotStartTime { get; set; }
+
+    /// <summary>Latest reminder job state for this booking, when present (e.g. Sent, Pending, Retrying, Failed, Cancelled).</summary>
+    [JsonPropertyName("notificationStatus")]
+    public string? NotificationStatus { get; set; }
+
+    /// <summary>Error from the last failed send attempt, when any.</summary>
+    [JsonPropertyName("lastError")]
+    public string? LastError { get; set; }
 }

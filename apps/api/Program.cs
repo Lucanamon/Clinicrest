@@ -9,6 +9,7 @@ using api.Infrastructure.DependencyInjection;
 using api.Infrastructure.Integrations;
 using api.Infrastructure.Middleware;
 using api.Infrastructure.Persistence;
+using api.Workers;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -43,6 +44,8 @@ try
     builder.Services.AddClinicrestPersistence(connectionString);
     builder.Services.AddClinicrestRepositories();
     builder.Services.AddClinicrestApplicationServices();
+    builder.Services.AddScoped<INotificationSender, MockNotificationSender>();
+    builder.Services.AddHostedService<NotificationWorker>();
 
     var jwtSection = builder.Configuration.GetSection("Jwt");
     var jwtIssuer = jwtSection["Issuer"] ?? "clinicrest-api";

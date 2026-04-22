@@ -18,6 +18,8 @@ export class SchedulePage implements OnInit {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly scheduledRows = signal<BookingApiDto[]>([]);
+  /** Booking id while a manual reminder retry is in flight */
+  readonly retryingBookingId = signal<number | null>(null);
 
   private readonly phonePattern = /^[0-9+]*$/;
 
@@ -44,6 +46,54 @@ export class SchedulePage implements OnInit {
       return 'Not provided';
     }
     return this.phonePattern.test(value) ? value : 'Invalid phone format';
+  }
+
+  /**
+   * Normalized reminder state for the latest notification job (API returns e.g. Sent, Pending, Failed).
+   */
+  reminderKind(
+    row: BookingApiDto
+  ): 'sent' | 'pending' | 'retrying' | 'failed' | 'cancelled' | 'none' {
+    const raw = (row.notificationStatus ?? '').trim();
+    if (!raw) {
+      return 'none';
+    }
+    const key = raw.toLowerCase();
+    if (key === 'sent') {
+      return 'sent';
+    }
+    if (key === 'pending') {
+      return 'pending';
+    }
+    if (key === 'retrying') {
+      return 'retrying';
+    }
+    if (key === 'failed') {
+      return 'failed';
+    }
+    if (key === 'cancelled') {
+      return 'cancelled';
+    }
+    return 'none';
+  }
+
+  failedTooltip(row: BookingApiDto): string {
+    return (row.lastError ?? '').trim() || 'Reminder could not be sent. Check the mock SMS service logs.';
+  }
+
+  retryFailedReminder(row: BookingApiDto): void {
+    this.retryingBookingId.set(row.id);
+    this.error.set(null);
+    this.bookingService.retryFailedNotification(row.id).subscribe({
+      next: () => {
+        this.retryingBookingId.set(null);
+        this.loadScheduled();
+      },
+      error: () => {
+        this.retryingBookingId.set(null);
+        this.error.set('Could not queue reminder retry. Try again or contact support.');
+      }
+    });
   }
 
   cancelScheduledAppointment(row: BookingApiDto): void {

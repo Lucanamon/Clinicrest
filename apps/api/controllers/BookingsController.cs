@@ -119,6 +119,48 @@ public class BookingsController(
         return Ok(new { success = true });
     }
 
+    [Authorize(Roles = Roles.ClinicalAll)]
+    [HttpPost("{id:long}/notification-retry")]
+    public async Task<IActionResult> RetryFailedNotification(
+        long id,
+        CancellationToken cancellationToken = default)
+    {
+        var updated = await bookingService.ResetFailedNotificationForRetryAsync(id, cancellationToken);
+        if (!updated)
+        {
+            return NotFound(new { message = "No failed reminder job found for this booking." });
+        }
+
+        return Ok(new { success = true });
+    }
+
+    [Authorize(Roles = Roles.ClinicalAll)]
+    [HttpPut("{id:long}/reschedule")]
+    public async Task<IActionResult> Reschedule(
+        long id,
+        [FromBody] RescheduleBookingRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var newSlotId = request.ResolveNewSlotId();
+        if (newSlotId <= 0)
+        {
+            return BadRequest(new { message = "new_slot_id is required." });
+        }
+
+        var result = await bookingService.RescheduleAsync(id, newSlotId, cancellationToken);
+        if (result.NotFound)
+        {
+            return NotFound();
+        }
+
+        if (!result.IsSuccess)
+        {
+            return Conflict(new { message = result.Error ?? "Could not reschedule this booking." });
+        }
+
+        return Ok(new { success = true });
+    }
+
     private static BookingStatus ParseStatus(string? status)
     {
         if (string.IsNullOrWhiteSpace(status))

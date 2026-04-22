@@ -25,6 +25,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Slot> Slots => Set<Slot>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<NotificationJob> NotificationJobs => Set<NotificationJob>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -351,6 +352,75 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(b => b.SlotId)
                 .HasDatabaseName("ix_bookings_slot_id");
         });
+
+        modelBuilder.Entity<NotificationJob>(entity =>
+        {
+            entity.ToTable("notification_jobs");
+
+            entity.HasKey(n => n.Id);
+
+            entity.Property(n => n.Id)
+                .HasColumnName("id");
+
+            entity.Property(n => n.BookingId)
+                .HasColumnName("booking_id");
+
+            entity.Property(n => n.PatientName)
+                .IsRequired()
+                .HasMaxLength(500)
+                .HasColumnName("patient_name");
+
+            entity.Property(n => n.PhoneNumber)
+                .IsRequired()
+                .HasMaxLength(32)
+                .HasColumnName("phone_number");
+
+            entity.Property(n => n.ScheduledSendTime)
+                .IsRequired()
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("scheduled_send_time");
+
+            entity.Property(n => n.Status)
+                .IsRequired()
+                .HasConversion(
+                    v => NotificationStatusConverters.ToDb(v),
+                    v => NotificationStatusConverters.FromDb(v))
+                .HasColumnType("text")
+                .HasColumnName("status");
+
+            entity.Property(n => n.RetryCount)
+                .IsRequired()
+                .HasDefaultValue(0)
+                .HasColumnName("retry_count");
+
+            entity.Property(n => n.Channel)
+                .IsRequired()
+                .HasConversion(
+                    v => NotificationChannelConverters.ToDb(v),
+                    v => NotificationChannelConverters.FromDb(v))
+                .HasColumnType("text")
+                .HasColumnName("channel");
+
+            entity.Property(n => n.ErrorMessage)
+                .HasMaxLength(4000)
+                .HasColumnName("error_message");
+
+            entity.Property(n => n.CreatedAt)
+                .IsRequired()
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("created_at");
+
+            entity.HasIndex(n => n.BookingId)
+                .HasDatabaseName("ix_notification_jobs_booking_id");
+
+            entity.HasIndex(n => new { n.Status, n.ScheduledSendTime })
+                .HasDatabaseName("ix_notification_jobs_status_scheduled_send_time");
+
+            entity.HasOne<Booking>()
+                .WithMany()
+                .HasForeignKey(n => n.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
@@ -502,4 +572,36 @@ public class ApplicationDbContext : DbContext
         var prop = entry.Property(pk.Name);
         return prop.CurrentValue?.ToString() ?? string.Empty;
     }
+}
+
+internal static class NotificationStatusConverters
+{
+    public static string ToDb(NotificationStatus v) =>
+        v switch
+        {
+            NotificationStatus.Pending => "PENDING",
+            NotificationStatus.Sent => "SENT",
+            NotificationStatus.Failed => "FAILED",
+            NotificationStatus.Retrying => "RETRYING",
+            NotificationStatus.Cancelled => "CANCELLED",
+            _ => throw new ArgumentOutOfRangeException(nameof(v), v, null)
+        };
+
+    public static NotificationStatus FromDb(string v) =>
+        v switch
+        {
+            "PENDING" => NotificationStatus.Pending,
+            "SENT" => NotificationStatus.Sent,
+            "FAILED" => NotificationStatus.Failed,
+            "RETRYING" => NotificationStatus.Retrying,
+            "CANCELLED" => NotificationStatus.Cancelled,
+            _ => NotificationStatus.Pending
+        };
+}
+
+internal static class NotificationChannelConverters
+{
+    public static string ToDb(NotificationChannel v) => v == NotificationChannel.Sms ? "SMS" : "EMAIL";
+
+    public static NotificationChannel FromDb(string v) => v == "SMS" ? NotificationChannel.Sms : NotificationChannel.Email;
 }

@@ -38,4 +38,9 @@ export class BookingService {
     const params = new HttpParams().set('status', status);
     return this.http.get<BookingApiDto[]>(`${environment.apiUrl}/bookings`, { params, context: this.context });
   }
+
+  /** Resets a failed reminder to Pending (retry count 0) so the background worker can send again. */
+  retryFailedNotification(bookingId: number): Observable<unknown> {
+    return this.http.post<unknown>(`${environment.apiUrl}/bookings/${bookingId}/notification-retry`, {}, { context: this.context });
+  }
 }

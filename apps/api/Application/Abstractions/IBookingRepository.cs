@@ -15,7 +15,16 @@ public interface IBookingRepository
 
     Task<bool> ScheduleAsync(long bookingId, Guid patientId, CancellationToken cancellationToken = default);
 
+    Task<RescheduleBookingResult> RescheduleAsync(
+        long bookingId,
+        long newSlotId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<BookingListItem>> GetListByStatusAsync(
         BookingStatus status,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ResetFailedNotificationForRetryAsync(
+        long bookingId,
         CancellationToken cancellationToken = default);
 }

@@ -19,6 +19,9 @@ export interface AppointmentDto {
   phoneNumber?: string | null;
   bookingId?: number;
   linkedPatientId?: string | null;
+  /** When linked to a booking reminder pipeline */
+  notificationStatus?: string | null;
+  lastError?: string | null;
 }
 
 export interface CreateAppointmentRequest {

@@ -26,6 +26,75 @@
           </div>
           <div class="row"><strong>Patient</strong><span>{{ row.patient_name }}</span></div>
           <div class="row"><strong>Phone</strong><span>{{ getValidPhone(row.phone_number) }}</span></div>
+          <div class="row reminder-audit">
+            <strong>Reminder</strong>
+            <div class="reminder-block">
+              @switch (reminderKind(row)) {
+                @case ('sent') {
+                  <span class="reminder-pill status-sent" role="img" aria-label="Reminder sent" title="Sent">
+                    <span class="reminder-glyph" aria-hidden="true">&#9989;</span>
+                    <span class="reminder-text">Sent</span>
+                  </span>
+                }
+                @case ('pending') {
+                  <span
+                    class="reminder-pill status-pending"
+                    role="img"
+                    aria-label="Reminder scheduled"
+                    title="Scheduled"
+                  >
+                    <span class="reminder-glyph" aria-hidden="true">&#128338;</span>
+                    <span class="reminder-text">Scheduled</span>
+                  </span>
+                }
+                @case ('retrying') {
+                  <span
+                    class="reminder-pill status-retrying"
+                    role="img"
+                    aria-label="Retrying reminder"
+                    title="Retrying"
+                  >
+                    <span class="spinner" aria-hidden="true"></span>
+                    <span class="reminder-text">Retrying&hellip;</span>
+                  </span>
+                }
+                @case ('failed') {
+                  <span
+                    class="reminder-failed-wrap"
+                    [attr.title]="failedTooltip(row)"
+                    [attr.aria-label]="'Reminder failed. ' + failedTooltip(row)"
+                  >
+                    <span class="reminder-pill status-failed">
+                      <span class="reminder-glyph" aria-hidden="true">&#9888;</span>
+                      <span class="reminder-text">Failed</span>
+                    </span>
+                    <button
+                      type="button"
+                      class="retry-btn"
+                      [disabled]="retryingBookingId() === row.id"
+                      (click)="retryFailedReminder(row)"
+                    >
+                      @if (retryingBookingId() === row.id) {
+                        <span>Working&hellip;</span>
+                      } @else {
+                        <span>Retry Manually</span>
+                      }
+                    </button>
+                  </span>
+                }
+                @case ('cancelled') {
+                  <span class="reminder-pill status-muted" title="Reminder cancelled" aria-label="Reminder cancelled"
+                    >Cancelled</span
+                  >
+                }
+                @default {
+                  <span class="reminder-pill status-muted" title="No reminder job" aria-label="No reminder job"
+                    >—</span
+                  >
+                }
+              }
+            </div>
+          </div>
           <div class="row"><strong>Notes/Fever</strong><span>No fever notes provided.</span></div>
           <button type="button" class="cancel-btn" (click)="cancelScheduledAppointment(row)">
             Cancel Appointment
