@@ -14,6 +14,12 @@ public class PatientDto
 
     public string PhoneNumber { get; set; } = string.Empty;
 
+    public string? Email { get; set; }
+
+    public bool AllowSms { get; set; }
+
+    public bool AllowEmail { get; set; }
+
     public string? UnderlyingDisease { get; set; }
 
     public int Age { get; set; }

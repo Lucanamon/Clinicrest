@@ -14,6 +14,12 @@ public class Patient : AuditableEntity
 
     public required string PhoneNumber { get; set; }
 
+    public string? Email { get; set; }
+
+    public bool AllowSms { get; set; } = true;
+
+    public bool AllowEmail { get; set; } = true;
+
     public string? UnderlyingDisease { get; set; }
 
     [NotMapped]

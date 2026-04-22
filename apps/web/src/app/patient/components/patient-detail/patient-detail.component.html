@@ -29,6 +29,18 @@
           <dd>{{ phoneDisplay() }}</dd>
         </div>
         <div>
+          <dt>Email</dt>
+          <dd>{{ emailDisplay() }}</dd>
+        </div>
+        <div>
+          <dt>Receive SMS reminders</dt>
+          <dd>{{ form.getRawValue().allowSms ? 'Yes' : 'No' }}</dd>
+        </div>
+        <div>
+          <dt>Receive Email reminders</dt>
+          <dd>{{ form.getRawValue().allowEmail ? 'Yes' : 'No' }}</dd>
+        </div>
+        <div>
           <dt>Underlying disease</dt>
           <dd>{{ diseaseDisplay() }}</dd>
         </div>
@@ -135,6 +147,28 @@
           @if (form.controls.phoneNumber.touched && form.controls.phoneNumber.invalid) {
             <span class="field-error">Required</span>
           }
+        </label>
+
+        <label class="field field-span">
+          <span>Email</span>
+          <input type="email" formControlName="email" autocomplete="email" />
+          @if (form.controls.email.touched && form.controls.email.invalid) {
+            <span class="field-error">Enter a valid email address</span>
+          }
+        </label>
+
+        <label class="field">
+          <span>
+            <input type="checkbox" formControlName="allowSms" />
+            Receive SMS reminders
+          </span>
+        </label>
+
+        <label class="field">
+          <span>
+            <input type="checkbox" formControlName="allowEmail" />
+            Receive Email reminders
+          </span>
         </label>
 
         <label class="field field-span">

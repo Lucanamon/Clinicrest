@@ -4,7 +4,7 @@
     <input
       type="search"
       name="globalSearch"
-      placeholder="Search patients, appointments, backlog…"
+      placeholder="Search patients, requests, backlog…"
       autocomplete="off"
       [formControl]="queryControl"
       (focus)="onInputFocus()"
@@ -43,7 +43,7 @@
           }
           @if (data.appointments.length) {
             <div class="result-group">
-              <div class="result-group-title">Appointments</div>
+              <div class="result-group-title">Requests</div>
               <ul>
                 @for (a of data.appointments; track a.id) {
                   <li>

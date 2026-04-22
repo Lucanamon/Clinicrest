@@ -144,6 +144,26 @@
   cursor: pointer;
 }
 
+.test-play-field-error {
+  margin: 0;
+  color: #9f1239;
+  font-size: 0.8rem;
+}
+
+.test-play-validation-list {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid #fecdd3;
+  border-radius: 8px;
+  background: #fff1f2;
+  color: #9f1239;
+  font-size: 0.84rem;
+}
+
+.test-play-validation-list li + li {
+  margin-top: 0.2rem;
+}
+
 .test-play-feedback {
   margin: 0 0 0.75rem;
   font-size: 0.86rem;

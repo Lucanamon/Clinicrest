@@ -47,6 +47,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ISlotService, SlotService>();
         services.AddScoped<IBookingService, BookingService>();
+        services.AddScoped<INotificationMessageBuilder, NotificationMessageBuilder>();
         services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
         return services;
     }

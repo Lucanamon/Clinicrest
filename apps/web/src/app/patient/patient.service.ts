@@ -10,6 +10,9 @@ export interface PatientDto {
   dateOfBirth: string;
   gender: string;
   phoneNumber: string;
+  email?: string | null;
+  allowSms: boolean;
+  allowEmail: boolean;
   underlyingDisease?: string | null;
   age: number;
   createdAt: string;
@@ -21,6 +24,9 @@ export interface CreatePatientRequest {
   dateOfBirth: string;
   gender: string;
   phoneNumber: string;
+  email?: string | null;
+  allowSms: boolean;
+  allowEmail: boolean;
   underlyingDisease?: string | null;
 }
 
@@ -30,6 +36,9 @@ export interface UpdatePatientRequest {
   dateOfBirth: string;
   gender: string;
   phoneNumber: string;
+  email?: string | null;
+  allowSms: boolean;
+  allowEmail: boolean;
   underlyingDisease?: string | null;
 }
 

@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { BookingApiDto } from '../../booking/booking-api.types';
 import { BookingService } from '../../booking/booking.service';
 import { AuthService } from '../../services/auth';
@@ -29,6 +30,7 @@ export class SchedulePage implements OnInit {
   readonly testPlayspaceOpen = signal(false);
   readonly testSendLoading = signal(false);
   readonly testSendFeedback = signal<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  readonly testFieldErrors = signal<Record<string, string[]>>({});
 
   readonly testForm = this.fb.nonNullable.group({
     phoneNumber: ['+1234567890', [Validators.required, Validators.minLength(1)]],
@@ -45,6 +47,18 @@ export class SchedulePage implements OnInit {
   get doctorLabel(): string {
     const profile = this.auth.getCurrentUserProfile();
     return profile?.displayName?.trim() || this.auth.getUsername();
+  }
+
+  get isEmailTestChannel(): boolean {
+    return this.testForm.controls.channel.value === 'Email';
+  }
+
+  get testContactLabel(): string {
+    return this.isEmailTestChannel ? 'Email address' : 'Phone number';
+  }
+
+  get testContactPlaceholder(): string {
+    return this.isEmailTestChannel ? 'name@example.com' : '+1234567890';
   }
 
   formatDateTime(iso?: string | null): string {
@@ -133,12 +147,14 @@ export class SchedulePage implements OnInit {
 
   openTestPlayspace(): void {
     this.testSendFeedback.set(null);
+    this.testFieldErrors.set({});
     this.testPlayspaceOpen.set(true);
   }
 
   closeTestPlayspace(): void {
     this.testPlayspaceOpen.set(false);
     this.testSendLoading.set(false);
+    this.testFieldErrors.set({});
   }
 
   sendTestNotification(): void {
@@ -147,8 +163,10 @@ export class SchedulePage implements OnInit {
       return;
     }
     const { phoneNumber, message, channel } = this.testForm.getRawValue();
+    console.debug('[Notification Playspace] submitted form value', { phoneNumber, message, channel });
     this.testSendLoading.set(true);
     this.testSendFeedback.set(null);
+    this.testFieldErrors.set({});
     this.notificationTest.testSend({ phoneNumber, message, channel }).subscribe({
       next: (res) => {
         this.testSendLoading.set(false);
@@ -156,13 +174,79 @@ export class SchedulePage implements OnInit {
       },
       error: (err) => {
         this.testSendLoading.set(false);
+        console.error('[Notification Playspace] raw error response', err);
+        const fieldErrors = this.extractValidationErrors(err);
+        this.testFieldErrors.set(fieldErrors);
         const msg =
+          this.pickFirstValidationMessage(fieldErrors) ??
           err?.error?.message ??
           err?.error?.title ??
           (typeof err?.message === 'string' ? err.message : 'Request failed. Are you signed in?');
         this.testSendFeedback.set({ kind: 'err', text: String(msg) });
       }
     });
+  }
+
+  fieldError(controlName: 'phoneNumber' | 'message' | 'channel'): string | null {
+    const map = this.testFieldErrors();
+    const keys =
+      controlName === 'phoneNumber'
+        ? ['phoneNumber', 'emailAddress']
+        : [controlName];
+
+    for (const key of keys) {
+      const list = map[key];
+      if (list?.length) {
+        return list[0];
+      }
+    }
+    return null;
+  }
+
+  validationSummaryMessages(): string[] {
+    const values = Object.values(this.testFieldErrors()).flat();
+    return Array.from(new Set(values));
+  }
+
+  private extractValidationErrors(err: unknown): Record<string, string[]> {
+    const response = err as HttpErrorResponse;
+    const errorsRaw = response?.error?.errors as Record<string, string[] | string> | undefined;
+    if (!errorsRaw || typeof errorsRaw !== 'object') {
+      return {};
+    }
+
+    const mapped: Record<string, string[]> = {};
+    for (const [key, value] of Object.entries(errorsRaw)) {
+      const normalizedKey = key.replace(/^\$?\./, '').toLowerCase();
+      if (normalizedKey.includes('emailaddress')) {
+        mapped['phoneNumber'] = this.toMessagesArray(value);
+        continue;
+      }
+      if (normalizedKey.includes('phonenumber')) {
+        mapped['phoneNumber'] = this.toMessagesArray(value);
+        continue;
+      }
+      if (normalizedKey.includes('message')) {
+        mapped['message'] = this.toMessagesArray(value);
+        continue;
+      }
+      if (normalizedKey.includes('channel')) {
+        mapped['channel'] = this.toMessagesArray(value);
+        continue;
+      }
+      mapped[key] = this.toMessagesArray(value);
+    }
+
+    return mapped;
+  }
+
+  private toMessagesArray(value: string[] | string): string[] {
+    return Array.isArray(value) ? value.map((v) => String(v)) : [String(value)];
+  }
+
+  private pickFirstValidationMessage(fieldErrors: Record<string, string[]>): string | null {
+    const first = Object.values(fieldErrors).find((messages) => messages.length > 0);
+    return first?.[0] ?? null;
   }
 
   private loadScheduled(): void {

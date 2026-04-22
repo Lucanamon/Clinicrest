@@ -25,8 +25,8 @@ public class NotificationsController(INotificationSender notificationSender) : C
 
         var sent = request.Channel switch
         {
-            NotificationChannel.Sms => await notificationSender.SendSmsAsync(request.PhoneNumber, request.Message),
-            NotificationChannel.Email => await notificationSender.SendEmailAsync(request.PhoneNumber, request.Message),
+            NotificationChannel.Sms => await notificationSender.SendSmsAsync(request.PhoneNumber ?? string.Empty, request.Message),
+            NotificationChannel.Email => await notificationSender.SendEmailAsync(request.EmailAddress ?? string.Empty, request.Message),
             _ => false
         };
 

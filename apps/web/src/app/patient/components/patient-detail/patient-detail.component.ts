@@ -35,6 +35,9 @@ export class PatientDetailComponent implements OnInit {
     gender: ['', [Validators.required, Validators.maxLength(32)]],
     age: this.fb.nonNullable.control({ value: 0, disabled: true }),
     phoneNumber: ['', [Validators.required, Validators.maxLength(32)]],
+    email: ['', [Validators.maxLength(500), Validators.email]],
+    allowSms: true,
+    allowEmail: true,
     underlyingDisease: ['', Validators.maxLength(1000)]
   });
 
@@ -69,6 +72,9 @@ export class PatientDetailComponent implements OnInit {
           dateOfBirth: dob,
           gender: trimmedGender,
           phoneNumber: p.phoneNumber,
+          email: p.email ?? '',
+          allowSms: p.allowSms,
+          allowEmail: p.allowEmail,
           underlyingDisease: p.underlyingDisease ?? ''
         });
         this.onDateChange(new Date(dob + 'T12:00:00.000Z'));
@@ -155,6 +161,9 @@ export class PatientDetailComponent implements OnInit {
       dateOfBirth: this.toApiDate(v.dateOfBirth),
       gender: finalGender || 'Other',
       phoneNumber: v.phoneNumber.trim(),
+      email: v.email.trim() || null,
+      allowSms: v.allowSms,
+      allowEmail: v.allowEmail,
       underlyingDisease: v.underlyingDisease.trim() || null
     };
 
@@ -209,6 +218,11 @@ export class PatientDetailComponent implements OnInit {
 
   diseaseDisplay(): string {
     const v = this.form.getRawValue().underlyingDisease?.trim();
+    return v || '—';
+  }
+
+  emailDisplay(): string {
+    const v = this.form.getRawValue().email?.trim();
     return v || '—';
   }
 

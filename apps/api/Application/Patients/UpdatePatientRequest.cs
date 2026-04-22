@@ -23,6 +23,14 @@ public class UpdatePatientRequest
     [MaxLength(32)]
     public string PhoneNumber { get; set; } = string.Empty;
 
+    [EmailAddress]
+    [MaxLength(500)]
+    public string? Email { get; set; }
+
+    public bool AllowSms { get; set; } = true;
+
+    public bool AllowEmail { get; set; } = true;
+
     [MaxLength(1000)]
     public string? UnderlyingDisease { get; set; }
 }

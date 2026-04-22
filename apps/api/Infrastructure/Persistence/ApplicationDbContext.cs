@@ -60,6 +60,20 @@ public class ApplicationDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(32);
 
+            entity.Property(p => p.Email)
+                .HasMaxLength(500)
+                .HasColumnName("email");
+
+            entity.Property(p => p.AllowSms)
+                .IsRequired()
+                .HasColumnName("allow_sms")
+                .HasDefaultValue(true);
+
+            entity.Property(p => p.AllowEmail)
+                .IsRequired()
+                .HasColumnName("allow_email")
+                .HasDefaultValue(true);
+
             entity.Property(p => p.UnderlyingDisease)
                 .HasMaxLength(1000);
 

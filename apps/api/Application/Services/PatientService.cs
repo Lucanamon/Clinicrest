@@ -4,6 +4,7 @@ using api.Domain.Entities;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System.Drawing;
+using System.Net.Mail;
 using System.Text.RegularExpressions;
 
 namespace api.Application.Services;
@@ -22,9 +23,11 @@ public class PatientService(
         var dateOfBirth = DateTime.SpecifyKind(request.DateOfBirth.Date, DateTimeKind.Utc);
         var gender = request.Gender.Trim();
         var phoneNumber = request.PhoneNumber.Trim();
+        var email = NormalizeOptional(request.Email);
 
         ValidateAge(dateOfBirth);
         ValidatePhoneNumber(phoneNumber);
+        ValidateEmail(email);
         await ValidateUniqueNameAsync(firstName, lastName, null, cancellationToken);
 
         var patient = new Patient
@@ -35,6 +38,9 @@ public class PatientService(
             DateOfBirth = dateOfBirth,
             Gender = gender,
             PhoneNumber = phoneNumber,
+            Email = email,
+            AllowSms = request.AllowSms,
+            AllowEmail = request.AllowEmail,
             UnderlyingDisease = NormalizeOptional(request.UnderlyingDisease)
         };
 
@@ -196,9 +202,11 @@ public class PatientService(
         var dateOfBirth = DateTime.SpecifyKind(request.DateOfBirth.Date, DateTimeKind.Utc);
         var gender = request.Gender.Trim();
         var phoneNumber = request.PhoneNumber.Trim();
+        var email = NormalizeOptional(request.Email);
 
         ValidateAge(dateOfBirth);
         ValidatePhoneNumber(phoneNumber);
+        ValidateEmail(email);
         await ValidateUniqueNameAsync(firstName, lastName, patient.Id, cancellationToken);
 
         patient.FirstName = firstName;
@@ -206,6 +214,9 @@ public class PatientService(
         patient.DateOfBirth = dateOfBirth;
         patient.Gender = gender;
         patient.PhoneNumber = phoneNumber;
+        patient.Email = email;
+        patient.AllowSms = request.AllowSms;
+        patient.AllowEmail = request.AllowEmail;
         patient.UnderlyingDisease = NormalizeOptional(request.UnderlyingDisease);
 
         return await repository.UpdateAsync(patient, cancellationToken);
@@ -221,6 +232,9 @@ public class PatientService(
             DateOfBirth = patient.DateOfBirth,
             Gender = patient.Gender,
             PhoneNumber = patient.PhoneNumber,
+            Email = patient.Email,
+            AllowSms = patient.AllowSms,
+            AllowEmail = patient.AllowEmail,
             UnderlyingDisease = patient.UnderlyingDisease,
             Age = patient.Age,
             CreatedAt = patient.CreatedAt
@@ -268,6 +282,23 @@ public class PatientService(
         if (!Regex.IsMatch(phoneNumber, @"^\d+$"))
         {
             throw new InvalidOperationException("Phone number must be numeric only.");
+        }
+    }
+
+    private static void ValidateEmail(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
+
+        try
+        {
+            _ = new MailAddress(email);
+        }
+        catch (FormatException)
+        {
+            throw new InvalidOperationException("Email format is invalid.");
         }
     }
 }

@@ -34,17 +34,23 @@
       </div>
       <form [formGroup]="testForm" (ngSubmit)="sendTestNotification()">
         <label class="test-play-field">
-          <span>Phone or email</span>
+          <span>{{ testContactLabel }}</span>
           <input
             type="text"
             formControlName="phoneNumber"
             autocomplete="off"
-            placeholder="+1234567890 (use an address for email channel)"
+            [placeholder]="testContactPlaceholder"
           />
+          @if (fieldError('phoneNumber'); as contactError) {
+            <small class="test-play-field-error">{{ contactError }}</small>
+          }
         </label>
         <label class="test-play-field">
           <span>Message</span>
           <input type="text" formControlName="message" />
+          @if (fieldError('message'); as messageError) {
+            <small class="test-play-field-error">{{ messageError }}</small>
+          }
         </label>
         <label class="test-play-field">
           <span>Channel</span>
@@ -52,7 +58,17 @@
             <option value="Sms">SMS</option>
             <option value="Email">Email</option>
           </select>
+          @if (fieldError('channel'); as channelError) {
+            <small class="test-play-field-error">{{ channelError }}</small>
+          }
         </label>
+        @if (validationSummaryMessages().length > 0) {
+          <ul class="test-play-validation-list" role="alert" aria-live="polite">
+            @for (item of validationSummaryMessages(); track item) {
+              <li>{{ item }}</li>
+            }
+          </ul>
+        }
         @if (testSendFeedback()) {
           <p
             class="test-play-feedback"

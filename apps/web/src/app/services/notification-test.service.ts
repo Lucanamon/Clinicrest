@@ -23,13 +23,24 @@ export class NotificationTestService {
   private readonly context = new HttpContext().set(skipGlobalErrorAlert, true);
 
   testSend(body: TestSendNotificationRequest): Observable<TestSendNotificationResponse> {
+    const contact = body.phoneNumber.trim();
+    const payload =
+      body.channel === 'Email'
+        ? {
+            emailAddress: contact,
+            message: body.message.trim(),
+            channel: body.channel,
+          }
+        : {
+            phoneNumber: contact,
+            message: body.message.trim(),
+            channel: body.channel,
+          };
+    console.debug('[NotificationTestService] request payload', payload);
+
     return this.http.post<TestSendNotificationResponse>(
       `${environment.apiUrl}/notifications/test-send`,
-      {
-        phoneNumber: body.phoneNumber.trim(),
-        message: body.message.trim(),
-        channel: body.channel
-      },
+      payload,
       { context: this.context }
     );
   }

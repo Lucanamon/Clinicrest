@@ -4,17 +4,46 @@ using api.Domain.Entities;
 
 namespace api.Application.Notifications;
 
-public class TestSendNotificationRequest
+public class TestSendNotificationRequest : IValidatableObject
 {
-    [Required]
-    [MinLength(1)]
-    public string PhoneNumber { get; set; } = string.Empty;
+    public string? PhoneNumber { get; set; }
+
+    [EmailAddress]
+    public string? EmailAddress { get; set; }
 
     [Required]
-    [MinLength(1)]
     public string Message { get; set; } = string.Empty;
 
     [Required]
     [JsonConverter(typeof(JsonStringEnumConverter<NotificationChannel>))]
     public NotificationChannel Channel { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (string.IsNullOrWhiteSpace(Message))
+        {
+            yield return new ValidationResult(
+                "Message is required.",
+                [nameof(Message)]);
+        }
+
+        if (Channel == NotificationChannel.Email)
+        {
+            if (string.IsNullOrWhiteSpace(EmailAddress))
+            {
+                yield return new ValidationResult(
+                    "Email address is required when channel is Email.",
+                    [nameof(EmailAddress)]);
+            }
+        }
+        else if (Channel == NotificationChannel.Sms)
+        {
+            if (string.IsNullOrWhiteSpace(PhoneNumber))
+            {
+                yield return new ValidationResult(
+                    "Phone number is required when channel is Sms.",
+                    [nameof(PhoneNumber)]);
+            }
+        }
+    }
 }

@@ -30,6 +30,9 @@ export class PatientFormComponent {
     dateOfBirth: ['', Validators.required],
     gender: ['', [Validators.required, Validators.maxLength(32)]],
     phoneNumber: ['', [Validators.required, Validators.maxLength(32), Validators.pattern(/^\d+$/)]],
+    email: ['', [Validators.maxLength(500), Validators.email]],
+    allowSms: true,
+    allowEmail: true,
     underlyingDisease: ['', Validators.maxLength(1000)]
   });
 
@@ -39,7 +42,9 @@ export class PatientFormComponent {
       this.form.patchValue({
         firstName: prefill.firstName,
         lastName: prefill.lastName,
-        phoneNumber: prefill.phoneNumber
+        phoneNumber: prefill.phoneNumber,
+        allowSms: true,
+        allowEmail: true
       });
     }
   }
@@ -67,6 +72,9 @@ export class PatientFormComponent {
       dateOfBirth: this.toApiDate(v.dateOfBirth),
       gender: v.gender.trim(),
       phoneNumber: v.phoneNumber.trim(),
+      email: v.email.trim() || null,
+      allowSms: v.allowSms,
+      allowEmail: v.allowEmail,
       underlyingDisease: v.underlyingDisease.trim() || null
     };
 

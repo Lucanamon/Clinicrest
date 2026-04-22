@@ -7,12 +7,12 @@ using Npgsql;
 
 namespace api.Infrastructure.Persistence.Repositories;
 
-public class BookingRepository(ApplicationDbContext dbContext) : IBookingRepository
+public class BookingRepository(
+    ApplicationDbContext dbContext,
+    INotificationMessageBuilder notificationMessageBuilder) : IBookingRepository
 {
     private const int MaxSerializationRetries = 5;
     private const string DuplicateBookingError = "DuplicateBooking";
-    private const string ReminderMessageText = "Reminder: your appointment is coming soon";
-    private const string MissingEmailPlaceholder = "no-patient-email@clinicrest.invalid";
 
     public async Task<BookingResult> CreateAsync(
         long slotId,
@@ -328,10 +328,27 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             return;
         }
 
+        Patient? patient = null;
+        if (booking.PatientId.HasValue)
+        {
+            patient = await dbContext.Patients.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == booking.PatientId.Value, cancellationToken);
+        }
+
         var createdAt = DateTime.UtcNow;
-        var phone = booking.PhoneNumber ?? string.Empty;
-        dbContext.NotificationJobs.Add(CreateSmsJob(booking.Id, booking.PatientName, phone, scheduledSend, createdAt));
-        dbContext.NotificationJobs.Add(CreateEmailJob(booking.Id, booking.PatientName, null, scheduledSend, createdAt));
+        var patientName = patient is not null
+            ? $"{patient.FirstName} {patient.LastName}".Trim()
+            : booking.PatientName;
+
+        var contact = ResolveReminderContact(patient, booking);
+        AddMissingChannelJobs(
+            booking.Id,
+            patientName,
+            contact,
+            slot.StartTime,
+            scheduledSend,
+            createdAt,
+            alreadyPending: []);
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -368,8 +385,7 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
         var patientName = patient is not null
             ? $"{patient.FirstName} {patient.LastName}".Trim()
             : booking.PatientName;
-
-        var phone = patient?.PhoneNumber ?? booking.PhoneNumber ?? string.Empty;
+        var contact = ResolveReminderContact(patient, booking);
         var scheduledSend = ComputeScheduledSendUtc(slot.StartTime);
         var utcNow = DateTime.UtcNow;
 
@@ -389,37 +405,56 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
 
         if (pendingJobs.Count == 0)
         {
-            dbContext.NotificationJobs.Add(CreateSmsJob(booking.Id, patientName, phone, scheduledSend, utcNow));
-            dbContext.NotificationJobs.Add(CreateEmailJob(booking.Id, patientName, ResolvePatientEmail(patient), scheduledSend, utcNow));
+            AddMissingChannelJobs(
+                booking.Id,
+                patientName,
+                contact,
+                slot.StartTime,
+                scheduledSend,
+                utcNow,
+                pendingJobs);
             return;
         }
 
-        var emailForChannel = ResolvePatientEmail(patient);
+        var messageByChannel = BuildMessages(patientName, slot.StartTime);
         foreach (var job in pendingJobs)
         {
             job.PatientName = patientName;
             job.ScheduledSendTime = scheduledSend;
             job.NextAttemptAt = scheduledSend;
-            job.Message = ReminderMessageText;
             if (job.Channel == NotificationChannel.Sms)
             {
-                job.PhoneNumber = phone;
+                if (contact.ShouldSendSms)
+                {
+                    job.PhoneNumber = contact.PhoneNumber!;
+                    job.Message = messageByChannel.SmsMessage;
+                }
+                else
+                {
+                    job.Status = NotificationStatus.Cancelled;
+                }
             }
             else
             {
-                job.EmailAddress = string.IsNullOrWhiteSpace(emailForChannel)
-                    ? MissingEmailPlaceholder
-                    : emailForChannel.Trim();
+                if (contact.ShouldSendEmail)
+                {
+                    job.EmailAddress = contact.EmailAddress!;
+                    job.Message = messageByChannel.EmailMessage;
+                }
+                else
+                {
+                    job.Status = NotificationStatus.Cancelled;
+                }
             }
         }
 
-        EnsureSmsAndEmailJobsExist(
+        AddMissingChannelJobs(
             booking.Id,
             patientName,
-            phone,
+            contact,
+            slot.StartTime,
             scheduledSend,
             utcNow,
-            emailForChannel,
             pendingJobs);
     }
 
@@ -445,9 +480,15 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
         {
             if (scheduledSend > utcNow)
             {
-                var phone = booking.PhoneNumber ?? string.Empty;
-                dbContext.NotificationJobs.Add(CreateSmsJob(booking.Id, booking.PatientName, phone, scheduledSend, utcNow));
-                dbContext.NotificationJobs.Add(CreateEmailJob(booking.Id, booking.PatientName, null, scheduledSend, utcNow));
+                var contact = ResolveReminderContact(patient: null, booking);
+                AddMissingChannelJobs(
+                    booking.Id,
+                    booking.PatientName,
+                    contact,
+                    slot.StartTime,
+                    scheduledSend,
+                    utcNow,
+                    pendingJobs);
             }
 
             return;
@@ -463,28 +504,45 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             return;
         }
 
+        var contactForReschedule = ResolveReminderContact(patient: null, booking);
+        var messageByChannel = BuildMessages(booking.PatientName, slot.StartTime);
         foreach (var job in pendingJobs)
         {
             job.ScheduledSendTime = scheduledSend;
             job.NextAttemptAt = scheduledSend;
-            job.Message = ReminderMessageText;
             if (job.Channel == NotificationChannel.Sms)
             {
-                job.PhoneNumber = booking.PhoneNumber ?? string.Empty;
+                if (contactForReschedule.ShouldSendSms)
+                {
+                    job.PhoneNumber = contactForReschedule.PhoneNumber!;
+                    job.Message = messageByChannel.SmsMessage;
+                }
+                else
+                {
+                    job.Status = NotificationStatus.Cancelled;
+                }
             }
             else
             {
-                job.EmailAddress = MissingEmailPlaceholder;
+                if (contactForReschedule.ShouldSendEmail)
+                {
+                    job.EmailAddress = contactForReschedule.EmailAddress!;
+                    job.Message = messageByChannel.EmailMessage;
+                }
+                else
+                {
+                    job.Status = NotificationStatus.Cancelled;
+                }
             }
         }
 
-        EnsureSmsAndEmailJobsExist(
+        AddMissingChannelJobs(
             booking.Id,
             booking.PatientName,
-            booking.PhoneNumber ?? string.Empty,
+            contactForReschedule,
+            slot.StartTime,
             scheduledSend,
             utcNow,
-            patientEmail: null,
             pendingJobs);
     }
 
@@ -562,27 +620,59 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
         }
     }
 
-    private static string? ResolvePatientEmail(Patient? patient) =>
-        // Patient has no email field today; when added, return it from patient here.
-        null;
+    private ReminderContact ResolveReminderContact(Patient? patient, Booking booking)
+    {
+        var phone = patient?.PhoneNumber ?? booking.PhoneNumber;
+        var email = patient?.Email;
 
-    private void EnsureSmsAndEmailJobsExist(
+        var hasValidPhone = !string.IsNullOrWhiteSpace(phone);
+        var hasValidEmail = !string.IsNullOrWhiteSpace(email) && IsValidEmail(email!);
+
+        var shouldSendSms = patient is null
+            ? hasValidPhone
+            : patient.AllowSms && hasValidPhone;
+
+        var shouldSendEmail = patient is not null &&
+            patient.AllowEmail &&
+            hasValidEmail;
+
+        return new ReminderContact
+        {
+            PhoneNumber = shouldSendSms ? phone!.Trim() : null,
+            EmailAddress = shouldSendEmail ? email!.Trim() : null,
+            ShouldSendSms = shouldSendSms,
+            ShouldSendEmail = shouldSendEmail
+        };
+    }
+
+    private (string SmsMessage, string EmailMessage) BuildMessages(string patientName, DateTime slotStartUtc)
+    {
+        return (
+            notificationMessageBuilder.BuildReminderMessage(NotificationChannel.Sms, patientName, slotStartUtc),
+            notificationMessageBuilder.BuildReminderMessage(NotificationChannel.Email, patientName, slotStartUtc)
+        );
+    }
+
+    private void AddMissingChannelJobs(
         long bookingId,
         string patientName,
-        string phone,
+        ReminderContact contact,
+        DateTime slotStartUtc,
         DateTime scheduledSend,
         DateTime createdAt,
-        string? patientEmail,
         List<NotificationJob> alreadyPending)
     {
-        if (!alreadyPending.Exists(j => j.Channel == NotificationChannel.Sms))
+        var messages = BuildMessages(patientName, slotStartUtc);
+        if (contact.ShouldSendSms && !alreadyPending.Exists(j => j.Channel == NotificationChannel.Sms))
         {
-            dbContext.NotificationJobs.Add(CreateSmsJob(bookingId, patientName, phone, scheduledSend, createdAt));
+            dbContext.NotificationJobs.Add(
+                CreateSmsJob(bookingId, patientName, contact.PhoneNumber!, scheduledSend, createdAt, messages.SmsMessage));
         }
 
-        if (!alreadyPending.Exists(j => j.Channel == NotificationChannel.Email))
+        if (contact.ShouldSendEmail && !alreadyPending.Exists(j => j.Channel == NotificationChannel.Email))
         {
-            dbContext.NotificationJobs.Add(CreateEmailJob(bookingId, patientName, patientEmail, scheduledSend, createdAt));
+            dbContext.NotificationJobs.Add(
+                CreateEmailJob(bookingId, patientName, contact.EmailAddress!, scheduledSend, createdAt, messages.EmailMessage));
         }
     }
 
@@ -609,14 +699,15 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
         string patientName,
         string phone,
         DateTime scheduledSend,
-        DateTime createdAt) =>
+        DateTime createdAt,
+        string message) =>
         new()
         {
             Id = Guid.NewGuid(),
             BookingId = bookingId,
             PatientName = patientName,
             PhoneNumber = phone,
-            Message = ReminderMessageText,
+            Message = message,
             ScheduledSendTime = scheduledSend,
             NextAttemptAt = scheduledSend,
             Status = NotificationStatus.Pending,
@@ -628,17 +719,18 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
     private static NotificationJob CreateEmailJob(
         long bookingId,
         string patientName,
-        string? emailAddress,
+        string emailAddress,
         DateTime scheduledSend,
-        DateTime createdAt) =>
+        DateTime createdAt,
+        string message) =>
         new()
         {
             Id = Guid.NewGuid(),
             BookingId = bookingId,
             PatientName = patientName,
             PhoneNumber = string.Empty,
-            EmailAddress = string.IsNullOrWhiteSpace(emailAddress) ? MissingEmailPlaceholder : emailAddress.Trim(),
-            Message = ReminderMessageText,
+            EmailAddress = emailAddress.Trim(),
+            Message = message,
             ScheduledSendTime = scheduledSend,
             NextAttemptAt = scheduledSend,
             Status = NotificationStatus.Pending,
@@ -646,6 +738,27 @@ public class BookingRepository(ApplicationDbContext dbContext) : IBookingReposit
             Channel = NotificationChannel.Email,
             CreatedAt = createdAt
         };
+
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            _ = new System.Net.Mail.MailAddress(email);
+            return true;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
+
+    private sealed class ReminderContact
+    {
+        public string? PhoneNumber { get; init; }
+        public string? EmailAddress { get; init; }
+        public bool ShouldSendSms { get; init; }
+        public bool ShouldSendEmail { get; init; }
+    }
 
     private static BookingResult Failed(string error)
     {
