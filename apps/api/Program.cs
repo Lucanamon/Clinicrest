@@ -7,6 +7,7 @@ using api.Domain.Entities;
 using api.Infrastructure.Auth;
 using api.Infrastructure.DependencyInjection;
 using api.Infrastructure.Integrations;
+using api.Infrastructure.Configuration;
 using api.Infrastructure.Middleware;
 using api.Infrastructure.Persistence;
 using api.Hubs;
@@ -96,6 +97,8 @@ try
     });
 
     var app = builder.Build();
+    SmtpConfigDiagnostics.LogSmtpConfigSnapshot(app.Configuration,
+        app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup"));
 
     app.UseExceptionHandler(errorApp =>
     {

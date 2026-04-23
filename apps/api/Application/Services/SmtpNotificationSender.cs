@@ -1,3 +1,4 @@
+using api.Application.Exceptions;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
@@ -38,11 +39,17 @@ public class SmtpNotificationSender : INotificationSender
             return false;
         }
 
+        _logger.LogDebug(
+            "SMTP Username loaded: {UsernamePresent}",
+            !string.IsNullOrWhiteSpace(o.Username) ? "true" : "false");
+
         if (string.IsNullOrWhiteSpace(o.Username) || string.IsNullOrWhiteSpace(o.Password))
         {
-            _logger.LogError(
-                "SMTP: credentials missing. Set Email__Smtp__Username and Email__Smtp__Password environment variables.");
-            return false;
+            throw new InvalidOperationException(
+                "Email:Smtp:Username and Email:Smtp:Password are not set. " +
+                "Set the process environment variables Email__Smtp__Username and Email__Smtp__Password (they map to those keys). " +
+                "When running with 'dotnet run', a repo-root .env file is not applied automatically; set variables in the shell, your IDE, or use Docker Compose with the same names in .env. " +
+                "Check startup log line \"[SMTP config]\" to see whether the configuration layer loaded host/username/password.");
         }
 
         if (string.IsNullOrWhiteSpace(o.FromEmail) || string.IsNullOrWhiteSpace(o.Host))
@@ -56,7 +63,7 @@ public class SmtpNotificationSender : INotificationSender
             var mime = new MimeMessage();
             var from = string.IsNullOrWhiteSpace(o.FromName)
                 ? new MailboxAddress(o.FromEmail, o.FromEmail)
-                : new MailboxAddress(o.FromName, o.FromEmail);
+                : new MailboxAddress(o.FromName.Trim(), o.FromEmail);
             mime.From.Add(from);
             mime.To.Add(MailboxAddress.Parse(email.Trim()));
             mime.Subject = o.DefaultSubject;
